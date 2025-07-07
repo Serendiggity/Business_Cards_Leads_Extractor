@@ -120,6 +120,14 @@ Changelog:
   * Dashboard with statistics and contact management
   * Responsive UI with Tailwind CSS and Radix UI components
   * All core Phase 1 features working: upload, process, search, manage
+
+- July 07, 2025: Enhanced UI and Fixed Critical Issues
+  * Fixed dynamic page updates - UI now refreshes automatically after uploads
+  * Added contact delete functionality with confirmation dialog
+  * Fixed confidence score display bug (field name mapping issue)
+  * Enhanced processing status reporting with accurate OCR and AI confidence metrics
+  * Improved error handling and user feedback throughout the application
+  * All features now working seamlessly: upload, process, view confidence scores, delete contacts
 ```
 
 ## User Preferences
