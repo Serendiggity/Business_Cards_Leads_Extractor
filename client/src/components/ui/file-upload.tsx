@@ -65,7 +65,19 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
       }
 
       setSelectedFiles([]);
+      
+      // Call callback immediately after upload
       onUploadComplete?.();
+      
+      // Set up polling to check for processing completion
+      const pollInterval = setInterval(() => {
+        onUploadComplete?.();
+      }, 3000); // Poll every 3 seconds
+      
+      // Stop polling after 30 seconds
+      setTimeout(() => {
+        clearInterval(pollInterval);
+      }, 30000);
     } catch (error) {
       console.error('Upload error:', error);
       toast({

@@ -53,7 +53,9 @@ export async function extractTextFromBuffer(imageBuffer: Buffer): Promise<OCRRes
       .trim();
     
     // Calculate better confidence score based on word recognition
-    const wordConfidences = words.map(word => word.confidence);
+    const wordConfidences = words && words.length > 0 
+      ? words.map(word => word.confidence || 0)
+      : [];
     const avgWordConfidence = wordConfidences.length > 0 
       ? wordConfidences.reduce((a, b) => a + b, 0) / wordConfidences.length 
       : confidence;
