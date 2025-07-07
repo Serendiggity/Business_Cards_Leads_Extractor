@@ -191,12 +191,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get recent uploads
+  // Get recent uploads with pagination
   app.get("/api/business-cards/recent", async (req, res) => {
     try {
-      const limit = parseInt(req.query.limit as string) || 10;
-      const recentCards = await storage.getRecentBusinessCards(limit);
-      res.json(recentCards);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 5;
+      const offset = (page - 1) * limit;
+      
+      const recentCards = await storage.getRecentBusinessCards(limit, offset);
+      const totalCount = await storage.getBusinessCardsCount();
+      const totalPages = Math.ceil(totalCount / limit);
+      
+      res.json({
+        data: recentCards,
+        pagination: {
+          page,
+          limit,
+          totalCount,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        }
+      });
     } catch (error) {
       console.error('Error fetching recent business cards:', error);
       res.status(500).json({ message: 'Failed to fetch recent business cards' });

@@ -26,7 +26,11 @@ import {
   NotebookTabs,
   Upload,
   Percent,
-  Tags
+  Tags,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -34,6 +38,9 @@ export default function Dashboard() {
   const [industryFilter, setIndustryFilter] = useState("all");
   const [selectedContact, setSelectedContact] = useState(null);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [uploadsPage, setUploadsPage] = useState(1);
+  const [uploadsPageSize, setUploadsPageSize] = useState(5);
+  const [isUploadsCollapsed, setIsUploadsCollapsed] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -47,9 +54,10 @@ export default function Dashboard() {
     queryKey: ["/api/contacts"],
   });
 
-  // Fetch recent uploads
+  // Fetch recent uploads with pagination
   const { data: recentUploads, isLoading: uploadsLoading } = useQuery({
-    queryKey: ["/api/business-cards/recent"],
+    queryKey: ["/api/business-cards/recent", uploadsPage, uploadsPageSize],
+    queryFn: () => apiRequest(`/api/business-cards/recent?page=${uploadsPage}&limit=${uploadsPageSize}`),
   });
 
   // Search contacts
@@ -72,6 +80,8 @@ export default function Dashboard() {
     queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
     queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
     queryClient.invalidateQueries({ queryKey: ["/api/business-cards/recent"] });
+    // Reset to first page when new upload completes
+    setUploadsPage(1);
   };
 
   const handleExportContacts = () => {
@@ -174,60 +184,119 @@ export default function Dashboard() {
                 <FileUpload onUploadComplete={handleUploadComplete} />
                 
                 {/* Recent Uploads */}
-                {recentUploads && recentUploads.length > 0 && (
+                {recentUploads?.data && recentUploads.data.length > 0 && (
                   <div className="mt-6">
-                    <h3 className="text-sm font-medium text-gray-900 mb-3">Recent Uploads</h3>
-                    <div className="space-y-3">
-                      {recentUploads.map((upload: any) => (
-                        <div key={upload.id} className="space-y-2">
-                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                            <div className="flex items-center">
-                              <Upload className="h-4 w-4 text-gray-400 mr-3" />
-                              <div>
-                                <p className="text-sm font-medium text-gray-900">{upload.filename}</p>
-                                <p className="text-xs text-gray-500">
-                                  {new Date(upload.createdAt).toLocaleString()}
-                                </p>
-                              </div>
-                            </div>
-                            <ProcessingStatus businessCard={upload} />
-                          </div>
-                          
-                          {/* Show confidence scores and errors if available */}
-                          {(upload.ocrConfidence !== undefined || upload.aiConfidence !== undefined || upload.processingError) && (
-                            <div className="ml-7 pl-4 border-l-2 border-gray-200 space-y-1">
-                              {upload.ocrConfidence !== undefined && (
-                                <div className="flex justify-between items-center text-xs">
-                                  <span className="text-gray-600">OCR Quality:</span>
-                                  <span className={`font-medium ${
-                                    upload.ocrConfidence >= 0.8 ? 'text-green-600' :
-                                    upload.ocrConfidence >= 0.6 ? 'text-yellow-600' : 'text-red-600'
-                                  }`}>
-                                    {Math.round(upload.ocrConfidence * 100)}%
-                                  </span>
-                                </div>
-                              )}
-                              {upload.aiConfidence !== undefined && (
-                                <div className="flex justify-between items-center text-xs">
-                                  <span className="text-gray-600">AI Extraction:</span>
-                                  <span className={`font-medium ${
-                                    upload.aiConfidence >= 0.8 ? 'text-green-600' :
-                                    upload.aiConfidence >= 0.6 ? 'text-yellow-600' : 'text-red-600'
-                                  }`}>
-                                    {Math.round(upload.aiConfidence * 100)}%
-                                  </span>
-                                </div>
-                              )}
-                              {upload.processingError && (
-                                <div className="text-xs text-red-600 mt-1 bg-red-50 p-2 rounded">
-                                  <span className="font-medium">Error:</span> {upload.processingError}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-medium text-gray-900">Recent Uploads</h3>
+                      <div className="flex items-center gap-2">
+                        <Select value={uploadsPageSize.toString()} onValueChange={(value) => {
+                          setUploadsPageSize(parseInt(value));
+                          setUploadsPage(1);
+                        }}>
+                          <SelectTrigger className="w-16 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="5">5</SelectItem>
+                            <SelectItem value="10">10</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsUploadsCollapsed(!isUploadsCollapsed)}
+                          className="p-1 h-8 w-8"
+                        >
+                          {isUploadsCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     </div>
+                    
+                    {!isUploadsCollapsed && (
+                      <>
+                        <div className="space-y-3">
+                          {recentUploads.data.map((upload: any) => (
+                            <div key={upload.id} className="space-y-2">
+                              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                                <div className="flex items-center">
+                                  <Upload className="h-4 w-4 text-gray-400 mr-3" />
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">{upload.filename}</p>
+                                    <p className="text-xs text-gray-500">
+                                      {new Date(upload.created_at).toLocaleString()}
+                                    </p>
+                                  </div>
+                                </div>
+                                <ProcessingStatus businessCard={upload} />
+                              </div>
+                              
+                              {/* Show confidence scores and errors if available */}
+                              {(upload.ocr_confidence !== undefined || upload.ai_confidence !== undefined || upload.processing_error) && (
+                                <div className="ml-7 pl-4 border-l-2 border-gray-200 space-y-1">
+                                  {upload.ocr_confidence !== undefined && (
+                                    <div className="flex justify-between items-center text-xs">
+                                      <span className="text-gray-600">OCR Quality:</span>
+                                      <span className={`font-medium ${
+                                        upload.ocr_confidence >= 0.8 ? 'text-green-600' :
+                                        upload.ocr_confidence >= 0.6 ? 'text-yellow-600' : 'text-red-600'
+                                      }`}>
+                                        {Math.round(upload.ocr_confidence * 100)}%
+                                      </span>
+                                    </div>
+                                  )}
+                                  {upload.ai_confidence !== undefined && (
+                                    <div className="flex justify-between items-center text-xs">
+                                      <span className="text-gray-600">AI Extraction:</span>
+                                      <span className={`font-medium ${
+                                        upload.ai_confidence >= 0.8 ? 'text-green-600' :
+                                        upload.ai_confidence >= 0.6 ? 'text-yellow-600' : 'text-red-600'
+                                      }`}>
+                                        {Math.round(upload.ai_confidence * 100)}%
+                                      </span>
+                                    </div>
+                                  )}
+                                  {upload.processing_error && (
+                                    <div className="text-xs text-red-600 mt-1 bg-red-50 p-2 rounded">
+                                      <span className="font-medium">Error:</span> {upload.processing_error}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pagination Controls */}
+                        {recentUploads.pagination && recentUploads.pagination.totalPages > 1 && (
+                          <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
+                            <div className="text-xs text-gray-500">
+                              Page {recentUploads.pagination.page} of {recentUploads.pagination.totalPages}
+                              ({recentUploads.pagination.totalCount} total)
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setUploadsPage(uploadsPage - 1)}
+                                disabled={!recentUploads.pagination.hasPrev}
+                                className="h-8 w-8 p-0"
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setUploadsPage(uploadsPage + 1)}
+                                disabled={!recentUploads.pagination.hasNext}
+                                className="h-8 w-8 p-0"
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
               </CardContent>

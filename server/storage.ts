@@ -23,7 +23,8 @@ export interface IStorage {
   getBusinessCard(id: number): Promise<BusinessCard | undefined>;
   updateBusinessCard(id: number, updates: Partial<InsertBusinessCard>): Promise<BusinessCard | undefined>;
   getBusinessCardsByStatus(status: string): Promise<BusinessCard[]>;
-  getRecentBusinessCards(limit: number): Promise<BusinessCard[]>;
+  getRecentBusinessCards(limit: number, offset?: number): Promise<BusinessCard[]>;
+  getBusinessCardsCount(): Promise<number>;
   
   // Statistics methods
   getStats(): Promise<{
@@ -167,12 +168,20 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(businessCards.createdAt));
   }
 
-  async getRecentBusinessCards(limit: number): Promise<BusinessCard[]> {
+  async getRecentBusinessCards(limit: number, offset = 0): Promise<BusinessCard[]> {
     return await db
       .select()
       .from(businessCards)
       .orderBy(desc(businessCards.createdAt))
-      .limit(limit);
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async getBusinessCardsCount(): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(businessCards);
+    return result.count;
   }
 
   // Statistics methods
