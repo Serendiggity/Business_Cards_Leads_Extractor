@@ -17,14 +17,45 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
   const { toast } = useToast();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    setSelectedFiles(prev => [...prev, ...acceptedFiles]);
-  }, []);
+    // Validate each file
+    const validFiles = acceptedFiles.filter(file => {
+      // Check file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Unsupported file type",
+          description: `${file.name} is not supported. Please upload JPG, PNG, GIF, or BMP files.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+      
+      // Check file size (10MB limit)
+      const maxSize = 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: `${file.name} is too large. Please upload files smaller than 10MB.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+      
+      return true;
+    });
+    
+    if (validFiles.length > 0) {
+      setSelectedFiles(prev => [...prev, ...validFiles]);
+    }
+  }, [toast]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.svg'],
-      'application/pdf': ['.pdf']
+      'image/jpeg': ['.jpeg', '.jpg'],
+      'image/png': ['.png'],
+      'image/gif': ['.gif'],
+      'image/bmp': ['.bmp']
     },
     maxSize: 10 * 1024 * 1024, // 10MB
     multiple: true

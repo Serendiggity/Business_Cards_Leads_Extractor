@@ -266,6 +266,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Check if OCR was successful
+      if (ocrConfidence === 0 || !ocrResult.text) {
+        console.log(`OCR completely failed for business card ${businessCardId}`);
+        await storage.updateBusinessCard(businessCardId, {
+          processingStatus: 'failed',
+          processingError: 'Unable to extract text from image. Please ensure the image is clear and in a supported format (JPG, PNG, GIF, BMP).'
+        });
+        return;
+      }
+      
       if (ocrConfidence < 0.3) {
         console.log(`OCR confidence too low (${ocrConfidence}) for business card ${businessCardId}`);
         await storage.updateBusinessCard(businessCardId, {
