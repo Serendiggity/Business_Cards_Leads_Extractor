@@ -65,10 +65,13 @@ export default function Dashboard() {
 
   const handleUploadComplete = () => {
     toast({
-      title: "Upload Complete",
+      title: "Processing Complete",
       description: "Business card has been processed and contact created.",
     });
-    refetchContacts();
+    // Invalidate all related queries to refresh the UI
+    queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/business-cards/recent"] });
   };
 
   const handleExportContacts = () => {

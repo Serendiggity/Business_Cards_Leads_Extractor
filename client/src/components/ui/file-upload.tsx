@@ -65,7 +65,11 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
       }
 
       setSelectedFiles([]);
-      onUploadComplete?.();
+      
+      // Add a small delay to ensure backend processing completes
+      setTimeout(() => {
+        onUploadComplete?.();
+      }, 1000);
     } catch (error) {
       console.error('Upload error:', error);
       toast({
