@@ -1,57 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Test Business Card Upload</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background: white; 
+            margin: 20px; 
+            width: 500px; 
+            height: 300px; 
+        }
+        .card {
+            border: 2px solid #333;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 450px;
+            height: 250px;
+        }
+        .company { font-size: 24px; font-weight: bold; margin-bottom: 15px; }
+        .name { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .title { font-size: 14px; margin-bottom: 15px; opacity: 0.9; }
+        .contact { font-size: 12px; line-height: 1.6; }
+    </style>
 </head>
 <body>
-    <h1>Test Business Card Upload</h1>
-    <form id="uploadForm" enctype="multipart/form-data">
-        <input type="file" id="fileInput" name="businessCard" accept="image/*,application/pdf">
-        <button type="submit">Upload</button>
-    </form>
-    <div id="result"></div>
-
-    <script>
-        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const formData = new FormData();
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                document.getElementById('result').innerHTML = 'Please select a file';
-                return;
-            }
-            
-            formData.append('businessCard', file);
-            
-            try {
-                const response = await fetch('/api/business-cards/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                document.getElementById('result').innerHTML = `
-                    <h3>Upload Result:</h3>
-                    <pre>${JSON.stringify(result, null, 2)}</pre>
-                `;
-                
-                // Check status after 5 seconds
-                setTimeout(async () => {
-                    const statusResponse = await fetch(`/api/business-cards/${result.id}/status`);
-                    const status = await statusResponse.json();
-                    document.getElementById('result').innerHTML += `
-                        <h3>Processing Status:</h3>
-                        <pre>${JSON.stringify(status, null, 2)}</pre>
-                    `;
-                }, 5000);
-                
-            } catch (error) {
-                document.getElementById('result').innerHTML = `Error: ${error.message}`;
-            }
-        });
-    </script>
+    <div class="card">
+        <div class="company">TechSolutions Inc.</div>
+        <div class="name">Jane Smith</div>
+        <div class="title">Senior Software Engineer</div>
+        <div class="contact">
+            📧 jane.smith@techsolutions.com<br>
+            📱 (555) 987-6543<br>
+            🌐 www.techsolutions.com<br>
+            📍 789 Innovation Drive, Tech City, CA 94025
+        </div>
+    </div>
 </body>
 </html>

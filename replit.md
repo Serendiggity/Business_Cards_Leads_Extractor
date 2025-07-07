@@ -113,7 +113,7 @@ Changelog:
 - July 07, 2025: Initial setup and implementation of Phase 1
   * Complete AI Business Development Assistant MVP deployed
   * Business card upload with drag-and-drop interface
-  * OCR text extraction (mock implementation for demo)
+  * OCR text extraction using Tesseract.js (real text recognition)
   * AI-powered contact data extraction using OpenAI GPT-4o
   * Natural language search functionality
   * PostgreSQL database with contacts and business cards tables
