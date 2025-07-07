@@ -57,7 +57,12 @@ export default function Dashboard() {
   // Fetch recent uploads with pagination
   const { data: recentUploads, isLoading: uploadsLoading } = useQuery({
     queryKey: ["/api/business-cards/recent", uploadsPage, uploadsPageSize],
-    queryFn: () => apiRequest(`/api/business-cards/recent?page=${uploadsPage}&limit=${uploadsPageSize}`),
+    queryFn: () => {
+      const url = new URL('/api/business-cards/recent', window.location.origin);
+      url.searchParams.set('page', uploadsPage.toString());
+      url.searchParams.set('limit', uploadsPageSize.toString());
+      return fetch(url.toString()).then(res => res.json());
+    },
   });
 
   // Search contacts
