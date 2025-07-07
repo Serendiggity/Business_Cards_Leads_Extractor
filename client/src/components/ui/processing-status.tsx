@@ -8,13 +8,13 @@ interface ProcessingStatusProps {
   businessCard: {
     id: number;
     filename: string;
-    status: string;
-    processingError?: string;
-    ocrConfidence?: number;
-    aiConfidence?: number;
-    extractedData?: any;
-    createdAt: string;
-    updatedAt: string;
+    processing_status: string;
+    processing_error?: string;
+    ocr_confidence?: number;
+    ai_confidence?: number;
+    extracted_data?: any;
+    created_at: string;
+    updated_at: string;
   };
   showDetails?: boolean;
 }
@@ -38,7 +38,7 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
     if (!status) return 'bg-gray-100 text-gray-800';
     switch (status) {
       case 'completed':
-        return businessCard.processingError ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800';
+        return businessCard.processing_error ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800';
       case 'failed':
         return 'bg-red-100 text-red-800';
       case 'processing':
@@ -50,7 +50,7 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
 
   const getStatusText = (status: string) => {
     if (!status) return 'Unknown';
-    if (status === 'completed' && businessCard.processingError) {
+    if (status === 'completed' && businessCard.processing_error) {
       return 'Completed with warnings';
     }
     return status.charAt(0).toUpperCase() + status.slice(1);
@@ -71,9 +71,9 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
   if (!showDetails) {
     return (
       <div className="flex items-center gap-2">
-        {getStatusIcon(businessCard.status)}
-        <Badge variant="outline" className={getStatusColor(businessCard.status)}>
-          {getStatusText(businessCard.status)}
+        {getStatusIcon(businessCard.processing_status)}
+        <Badge variant="outline" className={getStatusColor(businessCard.processing_status)}>
+          {getStatusText(businessCard.processing_status)}
         </Badge>
       </div>
     );
@@ -83,7 +83,7 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          {getStatusIcon(businessCard.status)}
+          {getStatusIcon(businessCard.processing_status)}
           Processing Status: {businessCard.filename}
         </CardTitle>
       </CardHeader>
@@ -91,77 +91,83 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
         {/* Status Overview */}
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Status:</span>
-          <Badge variant="outline" className={getStatusColor(businessCard.status)}>
-            {getStatusText(businessCard.status)}
+          <Badge variant="outline" className={getStatusColor(businessCard.processing_status)}>
+            {getStatusText(businessCard.processing_status)}
           </Badge>
         </div>
 
         {/* Error Message */}
-        {businessCard.processingError && (
+        {businessCard.processing_error && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {businessCard.processingError}
+              {businessCard.processing_error}
             </AlertDescription>
           </Alert>
         )}
 
         {/* Confidence Scores */}
-        {(businessCard.ocrConfidence !== undefined || businessCard.aiConfidence !== undefined) && (
+        {(businessCard.ocr_confidence !== undefined || businessCard.ai_confidence !== undefined) && (
           <div className="space-y-3">
             <h4 className="text-sm font-medium">Processing Confidence</h4>
             
-            {businessCard.ocrConfidence !== undefined && (
+            {businessCard.ocr_confidence !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm">OCR Text Extraction</span>
-                  <span className={`text-sm font-medium ${getConfidenceColor(businessCard.ocrConfidence)}`}>
-                    {Math.round(businessCard.ocrConfidence * 100)}% ({getConfidenceLabel(businessCard.ocrConfidence)})
+                  <span className={`text-sm font-medium ${getConfidenceColor(businessCard.ocr_confidence)}`}>
+                    {Math.round(businessCard.ocr_confidence * 100)}% ({getConfidenceLabel(businessCard.ocr_confidence)})
                   </span>
                 </div>
-                <Progress value={businessCard.ocrConfidence * 100} className="h-2" />
+                <Progress value={businessCard.ocr_confidence * 100} className="h-2" />
               </div>
             )}
 
-            {businessCard.aiConfidence !== undefined && (
+            {businessCard.ai_confidence !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm">AI Data Extraction</span>
-                  <span className={`text-sm font-medium ${getConfidenceColor(businessCard.aiConfidence)}`}>
-                    {Math.round(businessCard.aiConfidence * 100)}% ({getConfidenceLabel(businessCard.aiConfidence)})
+                  <span className={`text-sm font-medium ${getConfidenceColor(businessCard.ai_confidence)}`}>
+                    {Math.round(businessCard.ai_confidence * 100)}% ({getConfidenceLabel(businessCard.ai_confidence)})
                   </span>
                 </div>
-                <Progress value={businessCard.aiConfidence * 100} className="h-2" />
+                <Progress value={businessCard.ai_confidence * 100} className="h-2" />
               </div>
             )}
           </div>
         )}
 
         {/* Extracted Data Summary */}
-        {businessCard.extractedData && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">Extracted Information</h4>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <span className="text-gray-600">Name:</span> {businessCard.extractedData.name || 'Not found'}
-              </div>
-              <div>
-                <span className="text-gray-600">Company:</span> {businessCard.extractedData.company || 'Not found'}
-              </div>
-              <div>
-                <span className="text-gray-600">Email:</span> {businessCard.extractedData.email || 'Not found'}
-              </div>
-              <div>
-                <span className="text-gray-600">Phone:</span> {businessCard.extractedData.phone || 'Not found'}
+        {businessCard.extracted_data && (() => {
+          const extractedData = typeof businessCard.extracted_data === 'string' 
+            ? JSON.parse(businessCard.extracted_data) 
+            : businessCard.extracted_data;
+          
+          return (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Extracted Information</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-gray-600">Name:</span> {extractedData.name || 'Not found'}
+                </div>
+                <div>
+                  <span className="text-gray-600">Company:</span> {extractedData.company || 'Not found'}
+                </div>
+                <div>
+                  <span className="text-gray-600">Email:</span> {extractedData.email || 'Not found'}
+                </div>
+                <div>
+                  <span className="text-gray-600">Phone:</span> {extractedData.phone || 'Not found'}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Timestamps */}
         <div className="text-xs text-gray-500 space-y-1">
-          <div>Uploaded: {new Date(businessCard.createdAt).toLocaleString()}</div>
-          <div>Last Updated: {new Date(businessCard.updatedAt).toLocaleString()}</div>
+          <div>Uploaded: {new Date(businessCard.created_at).toLocaleString()}</div>
+          <div>Last Updated: {new Date(businessCard.updated_at).toLocaleString()}</div>
         </div>
       </CardContent>
     </Card>
