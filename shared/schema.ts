@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, real } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -26,6 +26,9 @@ export const businessCards = pgTable("business_cards", {
   ocrText: text("ocr_text"),
   extractedData: jsonb("extracted_data"),
   processingStatus: text("processing_status").notNull().default("pending"), // pending, processing, completed, failed
+  processingError: text("processing_error"), // Store error details if processing fails
+  ocrConfidence: real("ocr_confidence"), // OCR confidence score (0-1)
+  aiConfidence: real("ai_confidence"), // AI extraction confidence score (0-1)
   contactId: integer("contact_id").references(() => contacts.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

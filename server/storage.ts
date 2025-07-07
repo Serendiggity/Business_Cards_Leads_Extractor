@@ -134,10 +134,7 @@ export class DatabaseStorage implements IStorage {
   async createBusinessCard(businessCard: InsertBusinessCard): Promise<BusinessCard> {
     const [newCard] = await db
       .insert(businessCards)
-      .values({
-        ...businessCard,
-        updatedAt: new Date(),
-      })
+      .values(businessCard)
       .returning();
     return newCard;
   }
@@ -150,10 +147,7 @@ export class DatabaseStorage implements IStorage {
   async updateBusinessCard(id: number, updates: Partial<InsertBusinessCard>): Promise<BusinessCard | undefined> {
     const [updated] = await db
       .update(businessCards)
-      .set({
-        ...updates,
-        updatedAt: new Date(),
-      })
+      .set(updates)
       .where(eq(businessCards.id, id))
       .returning();
     return updated || undefined;

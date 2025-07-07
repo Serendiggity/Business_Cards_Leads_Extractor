@@ -163,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get business card processing status
+  // Get business card processing status with detailed reporting
   app.get("/api/business-cards/:id/status", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -177,7 +177,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: businessCard.id,
         filename: businessCard.filename,
         status: businessCard.processingStatus,
-        contactId: businessCard.contactId
+        contactId: businessCard.contactId,
+        processingError: businessCard.processingError,
+        ocrConfidence: businessCard.ocrConfidence,
+        aiConfidence: businessCard.aiConfidence,
+        extractedData: businessCard.extractedData,
+        createdAt: businessCard.createdAt,
+        updatedAt: businessCard.updatedAt
       });
     } catch (error) {
       console.error('Error fetching business card status:', error);
@@ -216,15 +222,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Extract text using OCR
       const ocrResult = await extractTextFromBuffer(imageBuffer);
+      const ocrConfidence = ocrResult.confidence;
       
       // Update business card with OCR text
       await storage.updateBusinessCard(businessCardId, {
         ocrText: ocrResult.text,
-        processingStatus: 'processing'
+        processingStatus: 'processing',
+        ocrConfidence: ocrConfidence
       });
+      
+      // Check if OCR was successful
+      if (ocrConfidence < 0.3) {
+        console.log(`OCR confidence too low (${ocrConfidence}) for business card ${businessCardId}`);
+        await storage.updateBusinessCard(businessCardId, {
+          processingStatus: 'failed',
+          processingError: `OCR confidence too low (${Math.round(ocrConfidence * 100)}%). Image may be unclear or corrupted.`
+        });
+        return;
+      }
       
       // Extract contact data using AI
       const contactData = await extractContactDataFromText(ocrResult.text);
+      const aiConfidence = contactData.confidence;
+      
+      // Check if AI extraction was successful
+      if (aiConfidence < 0.5) {
+        console.log(`AI extraction confidence too low (${aiConfidence}) for business card ${businessCardId}`);
+        await storage.updateBusinessCard(businessCardId, {
+          processingStatus: 'completed',
+          processingError: `Low confidence data extraction (${Math.round(aiConfidence * 100)}%). Text may not be from a business card.`,
+          extractedData: contactData,
+          aiConfidence: aiConfidence
+        });
+        return;
+      }
       
       // Create contact record
       const contact = await storage.createContact({
@@ -243,7 +274,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateBusinessCard(businessCardId, {
         contactId: contact.id,
         extractedData: contactData,
-        processingStatus: 'completed'
+        processingStatus: 'completed',
+        aiConfidence: aiConfidence
       });
       
       // Clean up uploaded file
@@ -253,9 +285,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error(`Error processing business card ${businessCardId}:`, error);
       
-      // Update status to failed
+      // Update status to failed with error details
       await storage.updateBusinessCard(businessCardId, {
-        processingStatus: 'failed'
+        processingStatus: 'failed',
+        processingError: `Processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
     }
   }

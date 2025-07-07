@@ -10,6 +10,7 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { ContactModal } from "@/components/ui/contact-modal";
 import { StatsCard } from "@/components/ui/stats-card";
 import { ContactTable } from "@/components/ui/contact-table";
+import { ProcessingStatus } from "@/components/ui/processing-status";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Search, 
@@ -141,23 +142,54 @@ export default function Dashboard() {
                 {recentUploads && recentUploads.length > 0 && (
                   <div className="mt-6">
                     <h3 className="text-sm font-medium text-gray-900 mb-3">Recent Uploads</h3>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {recentUploads.map((upload: any) => (
-                        <div key={upload.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                          <div className="flex items-center">
-                            <Upload className="h-4 w-4 text-gray-400 mr-3" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">{upload.filename}</p>
-                              <p className="text-xs text-gray-500">
-                                {new Date(upload.createdAt).toLocaleString()}
-                              </p>
+                        <div key={upload.id} className="space-y-2">
+                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                            <div className="flex items-center">
+                              <Upload className="h-4 w-4 text-gray-400 mr-3" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{upload.filename}</p>
+                                <p className="text-xs text-gray-500">
+                                  {new Date(upload.createdAt).toLocaleString()}
+                                </p>
+                              </div>
                             </div>
+                            <ProcessingStatus businessCard={upload} />
                           </div>
-                          <Badge 
-                            variant={upload.processingStatus === 'completed' ? 'default' : 'secondary'}
-                          >
-                            {upload.processingStatus}
-                          </Badge>
+                          
+                          {/* Show confidence scores and errors if available */}
+                          {(upload.ocrConfidence !== undefined || upload.aiConfidence !== undefined || upload.processingError) && (
+                            <div className="ml-7 pl-4 border-l-2 border-gray-200 space-y-1">
+                              {upload.ocrConfidence !== undefined && (
+                                <div className="flex justify-between items-center text-xs">
+                                  <span className="text-gray-600">OCR Quality:</span>
+                                  <span className={`font-medium ${
+                                    upload.ocrConfidence >= 0.8 ? 'text-green-600' :
+                                    upload.ocrConfidence >= 0.6 ? 'text-yellow-600' : 'text-red-600'
+                                  }`}>
+                                    {Math.round(upload.ocrConfidence * 100)}%
+                                  </span>
+                                </div>
+                              )}
+                              {upload.aiConfidence !== undefined && (
+                                <div className="flex justify-between items-center text-xs">
+                                  <span className="text-gray-600">AI Extraction:</span>
+                                  <span className={`font-medium ${
+                                    upload.aiConfidence >= 0.8 ? 'text-green-600' :
+                                    upload.aiConfidence >= 0.6 ? 'text-yellow-600' : 'text-red-600'
+                                  }`}>
+                                    {Math.round(upload.aiConfidence * 100)}%
+                                  </span>
+                                </div>
+                              )}
+                              {upload.processingError && (
+                                <div className="text-xs text-red-600 mt-1 bg-red-50 p-2 rounded">
+                                  <span className="font-medium">Error:</span> {upload.processingError}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
