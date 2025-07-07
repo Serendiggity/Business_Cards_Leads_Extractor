@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { extractTextFromBuffer } from "./services/ocr";
 import { extractContactDataFromText, processNaturalLanguageQuery } from "./services/ai";
 import { insertContactSchema, insertBusinessCardSchema } from "@shared/schema";
+import { mapBusinessCardsArray, mapContactsArray, mapContactToCamelCase } from "./mappers";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -39,7 +40,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Process natural language query
       const filteredContacts = await processNaturalLanguageQuery(query, allContacts);
       
-      res.json({ contacts: filteredContacts });
+      res.json({ contacts: mapContactsArray(filteredContacts) });
     } catch (error: any) {
       console.error('Error searching contacts:', error);
       res.status(500).json({ message: 'Failed to search contacts', error: error.message });
@@ -56,7 +57,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalCount = await storage.getContactsCount();
       
       res.json({
-        contacts,
+        contacts: mapContactsArray(contacts),
         totalCount,
         hasMore: offset + contacts.length < totalCount
       });
@@ -76,7 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Contact not found' });
       }
       
-      res.json(contact);
+      res.json(mapContactToCamelCase(contact));
     } catch (error) {
       console.error('Error fetching contact:', error);
       res.status(500).json({ message: 'Failed to fetch contact' });
@@ -106,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Contact not found' });
       }
       
-      res.json(contact);
+      res.json(mapContactToCamelCase(contact));
     } catch (error: any) {
       console.error('Error updating contact:', error);
       res.status(400).json({ message: 'Failed to update contact', error: error.message });
@@ -203,7 +204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalPages = Math.ceil(totalCount / limit);
       
       res.json({
-        data: recentCards,
+        data: mapBusinessCardsArray(recentCards),
         pagination: {
           page,
           limit,

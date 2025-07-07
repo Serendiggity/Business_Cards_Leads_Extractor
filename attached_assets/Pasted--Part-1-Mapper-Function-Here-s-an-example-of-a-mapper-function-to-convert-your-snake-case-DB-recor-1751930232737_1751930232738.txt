@@ -1,0 +1,88 @@
+✅ Part 1: Mapper Function
+Here's an example of a mapper function to convert your snake_case DB record to a camelCase API-friendly object.
+
+Assume your raw DB object looks like this:
+
+json
+Copy
+Edit
+{
+  "processing_status": "completed",
+  "ocr_confidence": 0.98,
+  "ai_confidence": 0.95,
+  "id": 123
+}
+🧭 JavaScript/Node.js Mapper Example
+js
+Copy
+Edit
+function mapBusinessCardToCamelCase(record) {
+  return {
+    id: record.id,
+    status: record.processing_status,
+    ocrConfidence: record.ocr_confidence,
+    aiConfidence: record.ai_confidence
+  };
+}
+If you are dealing with an array:
+
+js
+Copy
+Edit
+function mapBusinessCardsArray(records) {
+  return records.map(mapBusinessCardToCamelCase);
+}
+✅ Part 2: OpenAPI 3.1.0 Spec
+Now let's define an OpenAPI spec for an endpoint like GET /business-cards that returns a list of business cards with the camelCase fields.
+
+yaml
+Copy
+Edit
+openapi: 3.1.0
+info:
+  title: Business Card API
+  description: API for retrieving business card processing results.
+  version: 1.0.0
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+paths:
+  /business-cards:
+    get:
+      operationId: getBusinessCards
+      summary: Get all processed business cards
+      description: Returns a list of business cards with processing results.
+      responses:
+        '200':
+          description: A JSON array of business card objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BusinessCard'
+components:
+  schemas:
+    BusinessCard:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+          description: Status of the business card processing (e.g., pending, completed)
+        ocrConfidence:
+          type: number
+          format: float
+          description: Confidence score of the OCR process
+        aiConfidence:
+          type: number
+          format: float
+          description: Confidence score of the AI prediction
+✅ Next Steps
+Backend: Use the mapBusinessCardToCamelCase() function in your API route/controller before returning data.
+
+Frontend: Now receives properly named fields like ocrConfidence instead of ocr_confidence.
+
+API Contract: You can share this OpenAPI spec with your frontend team or use it to generate client SDKs.
+
