@@ -26,40 +26,69 @@ export async function extractContactDataFromText(ocrText: string): Promise<Extra
         {
           role: "system",
           content: `You are an expert at extracting contact information from business card text. 
-          Extract the following information and return it as JSON:
-          - name: Full name of the person
-          - email: Email address
-          - phone: Phone number (formatted cleanly)
-          - company: Company name
+          
+          CRITICAL RULES:
+          1. Only extract information that is clearly visible and readable in the text
+          2. Do not make assumptions or fill in missing data
+          3. Be extremely conservative with confidence scoring
+          4. If text appears garbled, OCR-corrupted, or unclear, significantly reduce confidence
+          5. Email addresses must contain @ symbol to be valid
+          6. Phone numbers should preserve original formatting when possible
+          7. Company names should not include job titles or personal names
+          8. If fewer than 3 fields are extractable, set confidence below 0.5
+          
+          Extract the following information and return as JSON:
+          - name: Full name of the person (first and last name)
+          - email: Email address (must contain @ symbol)
+          - phone: Phone number (preserve formatting)
+          - company: Company name only
           - title: Job title/position
-          - industry: Industry category (choose from: Technology, Construction, Healthcare, Finance, Real Estate, Education, Manufacturing, Consulting, Marketing, Sales, Other)
-          - address: Physical address
+          - industry: Best match from: Technology, Construction, Healthcare, Finance, Real Estate, Education, Manufacturing, Consulting, Marketing, Sales, Legal, Other
+          - address: Complete physical address
           - website: Website URL
           - confidence: Your confidence level (0-1) in the extraction accuracy
           
-          Return only valid JSON. If information is not clearly present, omit that field.`
+          Return only valid JSON. If information is not clearly present, omit that field.
+          Be very conservative with confidence - if you're unsure, lower the score.`
         },
         {
           role: "user",
-          content: `Extract contact information from this business card text:\n\n${ocrText}`
+          content: `Extract contact information from this business card text. Be precise and conservative:\n\n"${ocrText}"`
         }
       ],
       response_format: { type: "json_object" },
+      temperature: 0.0, // More deterministic results
     });
 
     const result = JSON.parse(response.choices[0].message.content || '{}');
     
-    return {
-      name: result.name || undefined,
-      email: result.email || undefined,
-      phone: result.phone || undefined,
-      company: result.company || undefined,
-      title: result.title || undefined,
-      industry: result.industry || undefined,
-      address: result.address || undefined,
-      website: result.website || undefined,
-      confidence: result.confidence || 0.8,
+    // Validate and clean extracted data
+    const cleanedData = {
+      name: result.name?.trim() || undefined,
+      email: result.email?.includes('@') ? result.email.trim() : undefined,
+      phone: result.phone?.trim() || undefined,
+      company: result.company?.trim() || undefined,
+      title: result.title?.trim() || undefined,
+      industry: result.industry?.trim() || undefined,
+      address: result.address?.trim() || undefined,
+      website: result.website?.trim() || undefined,
+      confidence: Math.max(0, Math.min(1, result.confidence || 0.5))
     };
+    
+    // Calculate quality-based confidence adjustment
+    const fieldsFound = Object.values(cleanedData).filter(v => v !== undefined).length - 1; // -1 for confidence
+    const minimumFields = 3; // Name, email/phone, company
+    
+    if (fieldsFound < minimumFields) {
+      cleanedData.confidence = Math.min(cleanedData.confidence, 0.4);
+    }
+    
+    // Additional validation for key fields
+    if (cleanedData.name && cleanedData.name.length < 3) {
+      cleanedData.confidence = Math.min(cleanedData.confidence, 0.3);
+    }
+    
+    return cleanedData;
   } catch (error) {
     console.error('AI extraction failed:', error);
     throw new Error(`AI extraction failed: ${error.message}`);
