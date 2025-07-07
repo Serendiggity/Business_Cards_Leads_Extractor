@@ -12,6 +12,8 @@ import { StatsCard } from "@/components/ui/stats-card";
 import { ContactTable } from "@/components/ui/contact-table";
 import { ProcessingStatus } from "@/components/ui/processing-status";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   Search, 
   Filter, 
@@ -33,6 +35,7 @@ export default function Dashboard() {
   const [selectedContact, setSelectedContact] = useState(null);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch dashboard stats
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -73,6 +76,35 @@ export default function Dashboard() {
       title: "Export Started",
       description: "Your contacts are being exported to CSV format.",
     });
+  };
+
+  // Delete contact mutation
+  const deleteContactMutation = useMutation({
+    mutationFn: (contactId: number) => 
+      apiRequest(`/api/contacts/${contactId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      toast({
+        title: "Contact Deleted",
+        description: "The contact has been removed from your database.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    },
+    onError: () => {
+      toast({
+        title: "Delete Failed",
+        description: "There was an error deleting the contact. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleContactDelete = (contactId: number) => {
+    if (window.confirm("Are you sure you want to delete this contact? This action cannot be undone.")) {
+      deleteContactMutation.mutate(contactId);
+    }
   };
 
   const contacts = searchQuery ? searchResults?.contacts : contactsData?.contacts;
@@ -269,6 +301,7 @@ export default function Dashboard() {
                 contacts={contacts || []}
                 loading={contactsLoading || searchLoading}
                 onContactClick={handleContactClick}
+                onContactDelete={handleContactDelete}
               />
             </Card>
           </div>

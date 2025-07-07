@@ -203,6 +203,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete contact
+  app.delete("/api/contacts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteContact(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: 'Contact not found' });
+      }
+      
+      res.json({ message: 'Contact deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting contact:', error);
+      res.status(500).json({ message: 'Failed to delete contact' });
+    }
+  });
+
   // Get dashboard statistics
   app.get("/api/stats", async (req, res) => {
     try {

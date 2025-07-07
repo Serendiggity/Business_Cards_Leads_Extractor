@@ -2,15 +2,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eye, Edit, Mail } from "lucide-react";
+import { Eye, Edit, Mail, Trash2 } from "lucide-react";
 
 interface ContactTableProps {
   contacts: any[];
   loading?: boolean;
   onContactClick: (contact: any) => void;
+  onContactDelete?: (contactId: number) => void;
 }
 
-export function ContactTable({ contacts, loading = false, onContactClick }: ContactTableProps) {
+export function ContactTable({ contacts, loading = false, onContactClick, onContactDelete }: ContactTableProps) {
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -146,6 +147,16 @@ export function ContactTable({ contacts, loading = false, onContactClick }: Cont
                   >
                     <Mail className="h-4 w-4" />
                   </Button>
+                  {onContactDelete && (
+                    <Button 
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onContactDelete(contact.id)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </TableCell>
             </TableRow>

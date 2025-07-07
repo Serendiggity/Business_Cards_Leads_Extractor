@@ -93,6 +93,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteContact(id: number): Promise<boolean> {
+    // First, update any business cards that reference this contact
+    await db.update(businessCards)
+      .set({ contactId: null })
+      .where(eq(businessCards.contactId, id));
+    
+    // Then delete the contact
     const result = await db.delete(contacts).where(eq(contacts.id, id));
     return (result.rowCount || 0) > 0;
   }
