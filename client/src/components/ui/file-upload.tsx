@@ -23,7 +23,7 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.jpeg', '.jpg', '.png'],
+      'image/*': ['.jpeg', '.jpg', '.png', '.svg'],
       'application/pdf': ['.pdf']
     },
     maxSize: 10 * 1024 * 1024, // 10MB
@@ -46,7 +46,10 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
         const formData = new FormData();
         formData.append('businessCard', file);
 
-        const response = await apiRequest('POST', '/api/business-cards/upload', formData);
+        const response = await fetch('/api/business-cards/upload', {
+          method: 'POST',
+          body: formData,
+        });
         
         if (response.ok) {
           setUploadProgress(((i + 1) / selectedFiles.length) * 100);
@@ -56,7 +59,8 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
             description: `${file.name} has been uploaded and processing started.`,
           });
         } else {
-          throw new Error(`Failed to upload ${file.name}`);
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Failed to upload ${file.name}`);
         }
       }
 
@@ -149,7 +153,7 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
 
       {/* File Type Info */}
       <div className="text-xs text-gray-500">
-        <p>Supported formats: JPG, PNG, PDF</p>
+        <p>Supported formats: JPG, PNG, SVG, PDF</p>
         <p>Max file size: 10MB</p>
       </div>
     </div>
