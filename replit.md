@@ -22,7 +22,7 @@ This is a full-stack AI-powered business development assistant designed to autom
 - **API Design**: RESTful endpoints with JSON responses
 
 ### Data Storage Solutions
-- **Primary Database**: PostgreSQL via Neon serverless
+- **Primary Database**: PostgreSQL via Supabase
 - **ORM**: Drizzle ORM with type-safe schema definitions
 - **File Storage**: Local file system for uploaded business card images
 - **Schema**: Two main tables - contacts and business_cards with proper relations
@@ -73,7 +73,7 @@ This is a full-stack AI-powered business development assistant designed to autom
 ### Core Services
 - **Google Cloud Vision API**: OCR text extraction from images
 - **OpenAI GPT-4**: AI-powered data extraction and query processing
-- **Neon Database**: Serverless PostgreSQL hosting
+- **Supabase**: PostgreSQL database hosting with real-time capabilities
 
 ### Development Tools
 - **Vite**: Frontend build tool with HMR
@@ -102,7 +102,7 @@ This is a full-stack AI-powered business development assistant designed to autom
 
 ### Environment Requirements
 - Node.js runtime environment
-- PostgreSQL database (Neon serverless)
+- PostgreSQL database (Supabase)
 - Google Cloud Vision API credentials
 - OpenAI API key for AI processing
 
@@ -128,6 +128,14 @@ Changelog:
   * Enhanced processing status reporting with accurate OCR and AI confidence metrics
   * Improved error handling and user feedback throughout the application
   * All features now working seamlessly: upload, process, view confidence scores, delete contacts
+
+- July 07, 2025: Database Migration and API Improvements
+  * Successfully migrated from Neon to Supabase database
+  * Implemented professional mapper functions for consistent API responses
+  * Fixed all field mapping issues between backend (snake_case) and frontend (camelCase)
+  * Enhanced Recent Uploads with collapsible functionality and pagination (5 or 10 items per page)
+  * Applied systematic approach to API design following best practices
+  * All database operations now use Supabase with proper connection pooling
 ```
 
 ## User Preferences
