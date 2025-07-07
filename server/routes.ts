@@ -248,8 +248,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ocrConfidence: ocrConfidence
       });
       
-      // Check if OCR was successful with improved threshold
-      if (ocrConfidence < 0.2) {
+      // Check if OCR was successful
+      if (ocrConfidence < 0.3) {
         console.log(`OCR confidence too low (${ocrConfidence}) for business card ${businessCardId}`);
         await storage.updateBusinessCard(businessCardId, {
           processingStatus: 'failed',
@@ -259,33 +259,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Extract contact data using AI
-      console.log(`OCR extracted text (${Math.round(ocrConfidence * 100)}% confidence):`, ocrResult.text.substring(0, 100) + '...');
       const contactData = await extractContactDataFromText(ocrResult.text);
       const aiConfidence = contactData.confidence;
-      console.log(`AI extracted contact data (${Math.round(aiConfidence * 100)}% confidence):`, {
-        name: contactData.name,
-        email: contactData.email,
-        company: contactData.company,
-        phone: contactData.phone
-      });
       
-      // Check if AI extraction was successful with improved logic
-      const hasMinimumData = contactData.name && (contactData.email || contactData.phone || contactData.company);
-      const overallQuality = Math.min(ocrConfidence, aiConfidence);
-      
-      if (!hasMinimumData || overallQuality < 0.2) {
-        const reason = !hasMinimumData ? 'insufficient contact data' : `low confidence (${Math.round(overallQuality * 100)}%)`;
-        console.log(`AI extraction failed for business card ${businessCardId}: ${reason}`);
+      // Check if AI extraction was successful
+      if (aiConfidence < 0.5) {
+        console.log(`AI extraction confidence too low (${aiConfidence}) for business card ${businessCardId}`);
         await storage.updateBusinessCard(businessCardId, {
           processingStatus: 'completed',
-          processingError: `Data extraction failed: ${reason}. Please try with a clearer image.`,
+          processingError: `Low confidence data extraction (${Math.round(aiConfidence * 100)}%). Text may not be from a business card.`,
           extractedData: contactData,
           aiConfidence: aiConfidence
         });
         return;
       }
       
-      // Create contact record with enhanced notes
+      // Create contact record
       const contact = await storage.createContact({
         name: contactData.name || 'Unknown',
         email: contactData.email,
@@ -295,7 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         industry: contactData.industry,
         address: contactData.address,
         website: contactData.website,
-        notes: `Extracted from business card with ${Math.round(contactData.confidence * 100)}% AI confidence and ${Math.round(ocrConfidence * 100)}% OCR confidence`
+        notes: `Extracted from business card with ${Math.round(contactData.confidence * 100)}% confidence`
       });
       
       // Update business card with contact link and completion status
@@ -309,7 +298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clean up uploaded file
       fs.unlinkSync(imagePath);
       
-      console.log(`Business card ${businessCardId} processed successfully - Contact created with ID ${contact.id}`);
+      console.log(`Business card ${businessCardId} processed successfully`);
     } catch (error) {
       console.error(`Error processing business card ${businessCardId}:`, error);
       

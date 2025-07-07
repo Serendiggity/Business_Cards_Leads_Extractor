@@ -37,22 +37,19 @@ export default function Dashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch dashboard stats with automatic refetch
+  // Fetch dashboard stats
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/stats"],
-    refetchInterval: 10000, // Refetch every 10 seconds
   });
 
-  // Fetch contacts with automatic refetch
+  // Fetch contacts
   const { data: contactsData, isLoading: contactsLoading, refetch: refetchContacts } = useQuery({
     queryKey: ["/api/contacts"],
-    refetchInterval: 10000, // Refetch every 10 seconds
   });
 
-  // Fetch recent uploads with automatic refetch
+  // Fetch recent uploads
   const { data: recentUploads, isLoading: uploadsLoading } = useQuery({
     queryKey: ["/api/business-cards/recent"],
-    refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
   });
 
   // Search contacts
@@ -71,10 +68,7 @@ export default function Dashboard() {
       title: "Upload Complete",
       description: "Business card has been processed and contact created.",
     });
-    // Refresh all data
-    queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/business-cards/recent"] });
+    refetchContacts();
   };
 
   const handleExportContacts = () => {

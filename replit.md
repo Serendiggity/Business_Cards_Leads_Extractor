@@ -120,15 +120,6 @@ Changelog:
   * Dashboard with statistics and contact management
   * Responsive UI with Tailwind CSS and Radix UI components
   * All core Phase 1 features working: upload, process, search, manage
-
-- July 07, 2025: Enhanced accuracy and reliability improvements
-  * Enhanced OCR processing with character whitelist and better text cleaning
-  * Improved AI extraction with stricter validation and conservative confidence scoring
-  * Better quality assessment logic (minimum data requirements)
-  * Enhanced error handling and detailed logging for debugging
-  * Improved confidence thresholds (OCR: 20%, AI: based on data quality)
-  * Added contact delete functionality with proper database cleanup
-  * Enhanced processing status reporting with detailed error messages
 ```
 
 ## User Preferences
