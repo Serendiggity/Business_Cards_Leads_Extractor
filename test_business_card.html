@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Business Card Upload</title>
+</head>
+<body>
+    <h1>Test Business Card Upload</h1>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" id="fileInput" name="businessCard" accept="image/*,application/pdf">
+        <button type="submit">Upload</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                document.getElementById('result').innerHTML = 'Please select a file';
+                return;
+            }
+            
+            formData.append('businessCard', file);
+            
+            try {
+                const response = await fetch('/api/business-cards/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                document.getElementById('result').innerHTML = `
+                    <h3>Upload Result:</h3>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+                
+                // Check status after 5 seconds
+                setTimeout(async () => {
+                    const statusResponse = await fetch(`/api/business-cards/${result.id}/status`);
+                    const status = await statusResponse.json();
+                    document.getElementById('result').innerHTML += `
+                        <h3>Processing Status:</h3>
+                        <pre>${JSON.stringify(status, null, 2)}</pre>
+                    `;
+                }, 5000);
+                
+            } catch (error) {
+                document.getElementById('result').innerHTML = `Error: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>

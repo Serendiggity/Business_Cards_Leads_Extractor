@@ -14,16 +14,38 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB
   },
   fileFilter: (req: any, file: any, cb: any) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/svg+xml', 'application/pdf'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only JPG, PNG, and PDF files are allowed.'));
+      cb(new Error('Invalid file type. Only JPG, PNG, SVG, and PDF files are allowed.'));
     }
   }
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Search contacts with natural language (must be before /api/contacts/:id)
+  app.get("/api/contacts/search", async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      
+      if (!query) {
+        return res.status(400).json({ message: 'Query parameter is required' });
+      }
+      
+      // Get all contacts for AI processing
+      const allContacts = await storage.getAllContacts(1000, 0);
+      
+      // Process natural language query
+      const filteredContacts = await processNaturalLanguageQuery(query, allContacts);
+      
+      res.json({ contacts: filteredContacts });
+    } catch (error: any) {
+      console.error('Error searching contacts:', error);
+      res.status(500).json({ message: 'Failed to search contacts', error: error.message });
+    }
+  });
+
   // Get all contacts with pagination
   app.get("/api/contacts", async (req, res) => {
     try {
@@ -108,27 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Search contacts with natural language
-  app.get("/api/contacts/search", async (req, res) => {
-    try {
-      const query = req.query.q as string;
-      
-      if (!query) {
-        return res.status(400).json({ message: 'Query parameter is required' });
-      }
-      
-      // Get all contacts for AI processing
-      const allContacts = await storage.getAllContacts(1000, 0);
-      
-      // Process natural language query
-      const filteredContacts = await processNaturalLanguageQuery(query, allContacts);
-      
-      res.json({ contacts: filteredContacts });
-    } catch (error) {
-      console.error('Error searching contacts:', error);
-      res.status(500).json({ message: 'Failed to search contacts' });
-    }
-  });
+
 
   // Upload business card
   app.post("/api/business-cards/upload", upload.single('businessCard'), async (req, res) => {
