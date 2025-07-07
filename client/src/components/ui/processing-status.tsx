@@ -8,13 +8,13 @@ interface ProcessingStatusProps {
   businessCard: {
     id: number;
     filename: string;
-    processing_status: string;
-    processing_error?: string;
-    ocr_confidence?: number;
-    ai_confidence?: number;
-    extracted_data?: any;
-    created_at: string;
-    updated_at: string;
+    processingStatus: string;
+    processingError?: string;
+    ocrConfidence?: number;
+    aiConfidence?: number;
+    extractedData?: any;
+    createdAt: string;
+    updatedAt: string;
   };
   showDetails?: boolean;
 }
@@ -38,7 +38,7 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
     if (!status) return 'bg-gray-100 text-gray-800';
     switch (status) {
       case 'completed':
-        return businessCard.processing_error ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800';
+        return businessCard.processingError ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800';
       case 'failed':
         return 'bg-red-100 text-red-800';
       case 'processing':
@@ -50,7 +50,7 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
 
   const getStatusText = (status: string) => {
     if (!status) return 'Unknown';
-    if (status === 'completed' && businessCard.processing_error) {
+    if (status === 'completed' && businessCard.processingError) {
       return 'Completed with warnings';
     }
     return status.charAt(0).toUpperCase() + status.slice(1);
@@ -71,9 +71,9 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
   if (!showDetails) {
     return (
       <div className="flex items-center gap-2">
-        {getStatusIcon(businessCard.processing_status)}
-        <Badge variant="outline" className={getStatusColor(businessCard.processing_status)}>
-          {getStatusText(businessCard.processing_status)}
+        {getStatusIcon(businessCard.processingStatus)}
+        <Badge variant="outline" className={getStatusColor(businessCard.processingStatus)}>
+          {getStatusText(businessCard.processingStatus)}
         </Badge>
       </div>
     );
@@ -83,7 +83,7 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          {getStatusIcon(businessCard.processing_status)}
+          {getStatusIcon(businessCard.processingStatus)}
           Processing Status: {businessCard.filename}
         </CardTitle>
       </CardHeader>
@@ -91,57 +91,57 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
         {/* Status Overview */}
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Status:</span>
-          <Badge variant="outline" className={getStatusColor(businessCard.processing_status)}>
-            {getStatusText(businessCard.processing_status)}
+          <Badge variant="outline" className={getStatusColor(businessCard.processingStatus)}>
+            {getStatusText(businessCard.processingStatus)}
           </Badge>
         </div>
 
         {/* Error Message */}
-        {businessCard.processing_error && (
+        {businessCard.processingError && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {businessCard.processing_error}
+              {businessCard.processingError}
             </AlertDescription>
           </Alert>
         )}
 
         {/* Confidence Scores */}
-        {(businessCard.ocr_confidence !== undefined || businessCard.ai_confidence !== undefined) && (
+        {(businessCard.ocrConfidence !== undefined || businessCard.aiConfidence !== undefined) && (
           <div className="space-y-3">
             <h4 className="text-sm font-medium">Processing Confidence</h4>
             
-            {businessCard.ocr_confidence !== undefined && (
+            {businessCard.ocrConfidence !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm">OCR Text Extraction</span>
-                  <span className={`text-sm font-medium ${getConfidenceColor(businessCard.ocr_confidence)}`}>
-                    {Math.round(businessCard.ocr_confidence * 100)}% ({getConfidenceLabel(businessCard.ocr_confidence)})
+                  <span className={`text-sm font-medium ${getConfidenceColor(businessCard.ocrConfidence)}`}>
+                    {Math.round(businessCard.ocrConfidence * 100)}% ({getConfidenceLabel(businessCard.ocrConfidence)})
                   </span>
                 </div>
-                <Progress value={businessCard.ocr_confidence * 100} className="h-2" />
+                <Progress value={businessCard.ocrConfidence * 100} className="h-2" />
               </div>
             )}
 
-            {businessCard.ai_confidence !== undefined && (
+            {businessCard.aiConfidence !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm">AI Data Extraction</span>
-                  <span className={`text-sm font-medium ${getConfidenceColor(businessCard.ai_confidence)}`}>
-                    {Math.round(businessCard.ai_confidence * 100)}% ({getConfidenceLabel(businessCard.ai_confidence)})
+                  <span className={`text-sm font-medium ${getConfidenceColor(businessCard.aiConfidence)}`}>
+                    {Math.round(businessCard.aiConfidence * 100)}% ({getConfidenceLabel(businessCard.aiConfidence)})
                   </span>
                 </div>
-                <Progress value={businessCard.ai_confidence * 100} className="h-2" />
+                <Progress value={businessCard.aiConfidence * 100} className="h-2" />
               </div>
             )}
           </div>
         )}
 
         {/* Extracted Data Summary */}
-        {businessCard.extracted_data && (() => {
-          const extractedData = typeof businessCard.extracted_data === 'string' 
-            ? JSON.parse(businessCard.extracted_data) 
-            : businessCard.extracted_data;
+        {businessCard.extractedData && (() => {
+          const extractedData = typeof businessCard.extractedData === 'string' 
+            ? JSON.parse(businessCard.extractedData) 
+            : businessCard.extractedData;
           
           return (
             <div className="space-y-2">
@@ -166,8 +166,8 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
 
         {/* Timestamps */}
         <div className="text-xs text-gray-500 space-y-1">
-          <div>Uploaded: {new Date(businessCard.created_at).toLocaleString()}</div>
-          <div>Last Updated: {new Date(businessCard.updated_at).toLocaleString()}</div>
+          <div>Uploaded: {new Date(businessCard.createdAt).toLocaleString()}</div>
+          <div>Last Updated: {new Date(businessCard.updatedAt).toLocaleString()}</div>
         </div>
       </CardContent>
     </Card>

@@ -228,7 +228,7 @@ export default function Dashboard() {
                                   <div>
                                     <p className="text-sm font-medium text-gray-900">{upload.filename}</p>
                                     <p className="text-xs text-gray-500">
-                                      {new Date(upload.created_at).toLocaleString()}
+                                      {upload.createdAt ? new Date(upload.createdAt).toLocaleString() : 'Invalid Date'}
                                     </p>
                                   </div>
                                 </div>
@@ -236,33 +236,33 @@ export default function Dashboard() {
                               </div>
                               
                               {/* Show confidence scores and errors if available */}
-                              {(upload.ocr_confidence !== undefined || upload.ai_confidence !== undefined || upload.processing_error) && (
+                              {(upload.ocrConfidence !== undefined || upload.aiConfidence !== undefined || upload.processingError) && (
                                 <div className="ml-7 pl-4 border-l-2 border-gray-200 space-y-1">
-                                  {upload.ocr_confidence !== undefined && (
+                                  {upload.ocrConfidence !== undefined && (
                                     <div className="flex justify-between items-center text-xs">
                                       <span className="text-gray-600">OCR Quality:</span>
                                       <span className={`font-medium ${
-                                        upload.ocr_confidence >= 0.8 ? 'text-green-600' :
-                                        upload.ocr_confidence >= 0.6 ? 'text-yellow-600' : 'text-red-600'
+                                        upload.ocrConfidence >= 0.8 ? 'text-green-600' :
+                                        upload.ocrConfidence >= 0.6 ? 'text-yellow-600' : 'text-red-600'
                                       }`}>
-                                        {Math.round(upload.ocr_confidence * 100)}%
+                                        {Math.round(upload.ocrConfidence * 100)}%
                                       </span>
                                     </div>
                                   )}
-                                  {upload.ai_confidence !== undefined && (
+                                  {upload.aiConfidence !== undefined && (
                                     <div className="flex justify-between items-center text-xs">
                                       <span className="text-gray-600">AI Extraction:</span>
                                       <span className={`font-medium ${
-                                        upload.ai_confidence >= 0.8 ? 'text-green-600' :
-                                        upload.ai_confidence >= 0.6 ? 'text-yellow-600' : 'text-red-600'
+                                        upload.aiConfidence >= 0.8 ? 'text-green-600' :
+                                        upload.aiConfidence >= 0.6 ? 'text-yellow-600' : 'text-red-600'
                                       }`}>
-                                        {Math.round(upload.ai_confidence * 100)}%
+                                        {Math.round(upload.aiConfidence * 100)}%
                                       </span>
                                     </div>
                                   )}
-                                  {upload.processing_error && (
+                                  {upload.processingError && (
                                     <div className="text-xs text-red-600 mt-1 bg-red-50 p-2 rounded">
-                                      <span className="font-medium">Error:</span> {upload.processing_error}
+                                      <span className="font-medium">Error:</span> {upload.processingError}
                                     </div>
                                   )}
                                 </div>
