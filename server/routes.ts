@@ -289,7 +289,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const aiConfidence = contactData.confidence;
       
       // Check if AI extraction was successful
-      if (aiConfidence < 0.5) {
+      console.log(`AI extraction result for business card ${businessCardId}:`, {
+        confidence: aiConfidence,
+        extractedData: contactData
+      });
+      
+      if (aiConfidence < 0.15) {
         console.log(`AI extraction confidence too low (${aiConfidence}) for business card ${businessCardId}`);
         await storage.updateBusinessCard(businessCardId, {
           processingStatus: 'completed',

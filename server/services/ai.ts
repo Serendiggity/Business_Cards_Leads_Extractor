@@ -19,6 +19,8 @@ export interface ExtractedContactData {
 }
 
 export async function extractContactDataFromText(ocrText: string): Promise<ExtractedContactData> {
+  console.log('AI extraction input text:', ocrText);
+  
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -26,16 +28,24 @@ export async function extractContactDataFromText(ocrText: string): Promise<Extra
         {
           role: "system",
           content: `You are an expert at extracting contact information from business card text. 
+          The text may be noisy or contain OCR errors, so be flexible in your interpretation.
+          
           Extract the following information and return it as JSON:
-          - name: Full name of the person
-          - email: Email address
-          - phone: Phone number (formatted cleanly)
-          - company: Company name
+          - name: Full name of the person (required - try to identify even if imperfect)
+          - email: Email address (look for @ symbols and common email patterns)
+          - phone: Phone number (look for number patterns, format cleanly)
+          - company: Company name or organization
           - title: Job title/position
           - industry: Industry category (choose from: Technology, Construction, Healthcare, Finance, Real Estate, Education, Manufacturing, Consulting, Marketing, Sales, Other)
           - address: Physical address
-          - website: Website URL
+          - website: Website URL (look for www. or .com patterns)
           - confidence: Your confidence level (0-1) in the extraction accuracy
+          
+          IMPORTANT: 
+          - Always provide at least a name, even if uncertain
+          - Be generous with confidence scores if you extract any meaningful data
+          - If you find ANY contact information (name, phone, email, company), set confidence to at least 0.3
+          - Only use very low confidence (< 0.2) if the text appears to be completely unrelated to business cards
           
           Return only valid JSON. If information is not clearly present, omit that field.`
         },
@@ -48,8 +58,17 @@ export async function extractContactDataFromText(ocrText: string): Promise<Extra
     });
 
     const result = JSON.parse(response.choices[0].message.content || '{}');
+    console.log('AI extraction raw result:', result);
     
-    return {
+    // Check if we extracted meaningful data
+    const hasName = result.name && result.name.trim().length > 0;
+    const hasEmail = result.email && result.email.includes('@');
+    const hasPhone = result.phone && result.phone.trim().length > 0;
+    const hasCompany = result.company && result.company.trim().length > 0;
+    
+    const hasMeaningfulData = hasName || hasEmail || hasPhone || hasCompany;
+    
+    const extractedData = {
       name: result.name || undefined,
       email: result.email || undefined,
       phone: result.phone || undefined,
@@ -58,8 +77,11 @@ export async function extractContactDataFromText(ocrText: string): Promise<Extra
       industry: result.industry || undefined,
       address: result.address || undefined,
       website: result.website || undefined,
-      confidence: result.confidence || 0.8,
+      confidence: hasMeaningfulData ? Math.max(0.3, result.confidence || 0.8) : (result.confidence || 0.1),
     };
+    
+    console.log('AI extraction final result:', extractedData);
+    return extractedData;
   } catch (error) {
     console.error('AI extraction failed:', error);
     throw new Error(`AI extraction failed: ${error.message}`);
