@@ -11,9 +11,12 @@ import { ContactModal } from "@/components/ui/contact-modal";
 import { StatsCard } from "@/components/ui/stats-card";
 import { ContactTable } from "@/components/ui/contact-table";
 import { ProcessingStatus } from "@/components/ui/processing-status";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import type { Contact, BusinessCard } from "@shared/schema";
 import { 
   Search, 
   Filter, 
@@ -33,29 +36,63 @@ import {
   ChevronRight
 } from "lucide-react";
 
+// Type definitions for API responses
+interface ContactsResponse {
+  contacts: Contact[];
+  totalCount: number;
+  hasMore: boolean;
+}
+
+interface SearchResponse {
+  contacts: Contact[];
+}
+
+interface RecentUploadsResponse {
+  data: BusinessCard[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalCount: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+interface DashboardStats {
+  totalContacts: number;
+  cardsProcessed: number;
+  categories: number;
+  accuracy: number;
+}
+
 export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [industryFilter, setIndustryFilter] = useState("all");
-  const [selectedContact, setSelectedContact] = useState(null);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [uploadsPage, setUploadsPage] = useState(1);
   const [uploadsPageSize, setUploadsPageSize] = useState(5);
   const [isUploadsCollapsed, setIsUploadsCollapsed] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<number | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Debounce search query to reduce API calls
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
   // Fetch dashboard stats
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/stats"],
   });
 
   // Fetch contacts
-  const { data: contactsData, isLoading: contactsLoading, refetch: refetchContacts } = useQuery({
+  const { data: contactsData, isLoading: contactsLoading, refetch: refetchContacts } = useQuery<ContactsResponse>({
     queryKey: ["/api/contacts"],
   });
 
   // Fetch recent uploads with pagination
-  const { data: recentUploads, isLoading: uploadsLoading } = useQuery({
+  const { data: recentUploads, isLoading: uploadsLoading } = useQuery<RecentUploadsResponse>({
     queryKey: ["/api/business-cards/recent", uploadsPage, uploadsPageSize],
     queryFn: () => {
       const url = new URL('/api/business-cards/recent', window.location.origin);
@@ -65,13 +102,13 @@ export default function Dashboard() {
     },
   });
 
-  // Search contacts
-  const { data: searchResults, isLoading: searchLoading } = useQuery({
-    queryKey: ["/api/contacts/search", searchQuery],
-    enabled: searchQuery.length > 0,
+  // Search contacts with debounced query
+  const { data: searchResults, isLoading: searchLoading } = useQuery<SearchResponse>({
+    queryKey: ["/api/contacts/search", debouncedSearchQuery],
+    enabled: debouncedSearchQuery.length > 0,
   });
 
-  const handleContactClick = (contact: any) => {
+  const handleContactClick = (contact: Contact) => {
     setSelectedContact(contact);
     setIsContactModalOpen(true);
   };
@@ -109,6 +146,7 @@ export default function Dashboard() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      setContactToDelete(null);
     },
     onError: () => {
       toast({
@@ -116,16 +154,21 @@ export default function Dashboard() {
         description: "There was an error deleting the contact. Please try again.",
         variant: "destructive",
       });
+      setContactToDelete(null);
     },
   });
 
   const handleContactDelete = (contactId: number) => {
-    if (window.confirm("Are you sure you want to delete this contact? This action cannot be undone.")) {
-      deleteContactMutation.mutate(contactId);
+    setContactToDelete(contactId);
+  };
+
+  const confirmDelete = () => {
+    if (contactToDelete) {
+      deleteContactMutation.mutate(contactToDelete);
     }
   };
 
-  const contacts = searchQuery ? searchResults?.contacts : contactsData?.contacts;
+  const contacts = debouncedSearchQuery ? searchResults?.contacts : contactsData?.contacts;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -220,7 +263,7 @@ export default function Dashboard() {
                     {!isUploadsCollapsed && (
                       <>
                         <div className="space-y-3">
-                          {recentUploads.data.map((upload: any) => (
+                          {recentUploads.data.map((upload: BusinessCard) => (
                             <div key={upload.id} className="space-y-2">
                               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                                 <div className="flex items-center">
@@ -391,6 +434,24 @@ export default function Dashboard() {
         isOpen={isContactModalOpen}
         onClose={() => setIsContactModalOpen(false)}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={contactToDelete !== null} onOpenChange={() => setContactToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Contact</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this contact? This action cannot be undone and will permanently remove the contact from your database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+              Delete Contact
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

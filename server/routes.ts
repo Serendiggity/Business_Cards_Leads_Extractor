@@ -1,10 +1,11 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { extractTextFromBuffer } from "./services/ocr";
 import { extractContactDataFromText, processNaturalLanguageQuery } from "./services/ai";
 import { insertContactSchema, insertBusinessCardSchema } from "@shared/schema";
 import { mapBusinessCardsArray, mapContactsArray, mapContactToCamelCase } from "./mappers";
+import { asyncHandler, createError } from "./middleware/errorHandler";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -26,227 +27,174 @@ const upload = multer({
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Search contacts with natural language (must be before /api/contacts/:id)
-  app.get("/api/contacts/search", async (req, res) => {
-    try {
-      const query = req.query.q as string;
-      
-      if (!query) {
-        return res.status(400).json({ message: 'Query parameter is required' });
-      }
-      
-      // Get all contacts for AI processing
-      const allContacts = await storage.getAllContacts(1000, 0);
-      
-      // Process natural language query
-      const filteredContacts = await processNaturalLanguageQuery(query, allContacts);
-      
-      res.json({ contacts: mapContactsArray(filteredContacts) });
-    } catch (error: any) {
-      console.error('Error searching contacts:', error);
-      res.status(500).json({ message: 'Failed to search contacts', error: error.message });
+  app.get("/api/contacts/search", asyncHandler(async (req: Request, res: Response) => {
+    const query = req.query.q as string;
+    
+    if (!query) {
+      throw createError('Query parameter is required', 400);
     }
-  });
+    
+    // Get all contacts for AI processing
+    const allContacts = await storage.getAllContacts(1000, 0);
+    
+    // Process natural language query
+    const filteredContacts = await processNaturalLanguageQuery(query, allContacts);
+    
+    res.json({ contacts: mapContactsArray(filteredContacts) });
+  }));
 
   // Get all contacts with pagination
-  app.get("/api/contacts", async (req, res) => {
-    try {
-      const limit = parseInt(req.query.limit as string) || 50;
-      const offset = parseInt(req.query.offset as string) || 0;
-      
-      const contacts = await storage.getAllContacts(limit, offset);
-      const totalCount = await storage.getContactsCount();
-      
-      res.json({
-        contacts: mapContactsArray(contacts),
-        totalCount,
-        hasMore: offset + contacts.length < totalCount
-      });
-    } catch (error) {
-      console.error('Error fetching contacts:', error);
-      res.status(500).json({ message: 'Failed to fetch contacts' });
-    }
-  });
+  app.get("/api/contacts", asyncHandler(async (req: Request, res: Response) => {
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+    
+    const contacts = await storage.getAllContacts(limit, offset);
+    const totalCount = await storage.getContactsCount();
+    
+    res.json({
+      contacts: mapContactsArray(contacts),
+      totalCount,
+      hasMore: offset + contacts.length < totalCount
+    });
+  }));
 
   // Get single contact
-  app.get("/api/contacts/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const contact = await storage.getContact(id);
-      
-      if (!contact) {
-        return res.status(404).json({ message: 'Contact not found' });
-      }
-      
-      res.json(mapContactToCamelCase(contact));
-    } catch (error) {
-      console.error('Error fetching contact:', error);
-      res.status(500).json({ message: 'Failed to fetch contact' });
+  app.get("/api/contacts/:id", asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      throw createError('Invalid contact ID', 400);
     }
-  });
+    
+    const contact = await storage.getContact(id);
+    
+    if (!contact) {
+      throw createError('Contact not found', 404);
+    }
+    
+    res.json(mapContactToCamelCase(contact));
+  }));
 
   // Create contact
-  app.post("/api/contacts", async (req, res) => {
-    try {
-      const validatedData = insertContactSchema.parse(req.body);
-      const contact = await storage.createContact(validatedData);
-      res.status(201).json(contact);
-    } catch (error: any) {
-      console.error('Error creating contact:', error);
-      res.status(400).json({ message: 'Failed to create contact', error: error.message });
-    }
-  });
+  app.post("/api/contacts", asyncHandler(async (req: Request, res: Response) => {
+    const validatedData = insertContactSchema.parse(req.body);
+    const contact = await storage.createContact(validatedData);
+    res.status(201).json(contact);
+  }));
 
   // Update contact
-  app.put("/api/contacts/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const validatedData = insertContactSchema.partial().parse(req.body);
-      const contact = await storage.updateContact(id, validatedData);
-      
-      if (!contact) {
-        return res.status(404).json({ message: 'Contact not found' });
-      }
-      
-      res.json(mapContactToCamelCase(contact));
-    } catch (error: any) {
-      console.error('Error updating contact:', error);
-      res.status(400).json({ message: 'Failed to update contact', error: error.message });
+  app.put("/api/contacts/:id", asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      throw createError('Invalid contact ID', 400);
     }
-  });
+    
+    const validatedData = insertContactSchema.partial().parse(req.body);
+    const contact = await storage.updateContact(id, validatedData);
+    
+    if (!contact) {
+      throw createError('Contact not found', 404);
+    }
+    
+    res.json(mapContactToCamelCase(contact));
+  }));
 
   // Delete contact
-  app.delete("/api/contacts/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const success = await storage.deleteContact(id);
-      
-      if (!success) {
-        return res.status(404).json({ message: 'Contact not found' });
-      }
-      
-      res.json({ message: 'Contact deleted successfully' });
-    } catch (error) {
-      console.error('Error deleting contact:', error);
-      res.status(500).json({ message: 'Failed to delete contact' });
+  app.delete("/api/contacts/:id", asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      throw createError('Invalid contact ID', 400);
     }
-  });
-
-
+    
+    const success = await storage.deleteContact(id);
+    
+    if (!success) {
+      throw createError('Contact not found', 404);
+    }
+    
+    res.json({ message: 'Contact deleted successfully' });
+  }));
 
   // Upload business card
-  app.post("/api/business-cards/upload", upload.single('businessCard'), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: 'No file uploaded' });
-      }
-
-      const file = req.file as Express.Multer.File;
-      
-      // Create business card record
-      const businessCard = await storage.createBusinessCard({
-        filename: file.originalname,
-        originalPath: file.path,
-        processingStatus: 'processing'
-      });
-
-      // Process in background
-      processBusinessCard(businessCard.id, file.path);
-
-      res.status(201).json({
-        id: businessCard.id,
-        filename: businessCard.filename,
-        status: 'processing',
-        message: 'Business card uploaded and processing started'
-      });
-    } catch (error) {
-      console.error('Error uploading business card:', error);
-      res.status(500).json({ message: 'Failed to upload business card' });
+  app.post("/api/business-cards/upload", upload.single('businessCard'), asyncHandler(async (req: Request, res: Response) => {
+    if (!req.file) {
+      throw createError('No file uploaded', 400);
     }
-  });
+
+    const file = req.file as Express.Multer.File;
+    
+    // Create business card record
+    const businessCard = await storage.createBusinessCard({
+      filename: file.originalname,
+      originalPath: file.path,
+      processingStatus: 'processing'
+    });
+
+    // Process in background
+    processBusinessCard(businessCard.id, file.path);
+
+    res.status(201).json({
+      id: businessCard.id,
+      filename: businessCard.filename,
+      status: 'processing',
+      message: 'Business card uploaded and processing started'
+    });
+  }));
 
   // Get business card processing status with detailed reporting
-  app.get("/api/business-cards/:id/status", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const businessCard = await storage.getBusinessCard(id);
-      
-      if (!businessCard) {
-        return res.status(404).json({ message: 'Business card not found' });
-      }
-      
-      res.json({
-        id: businessCard.id,
-        filename: businessCard.filename,
-        status: businessCard.processingStatus,
-        contactId: businessCard.contactId,
-        processingError: businessCard.processingError,
-        ocrConfidence: businessCard.ocrConfidence,
-        aiConfidence: businessCard.aiConfidence,
-        extractedData: businessCard.extractedData,
-        createdAt: businessCard.createdAt,
-        updatedAt: businessCard.updatedAt
-      });
-    } catch (error) {
-      console.error('Error fetching business card status:', error);
-      res.status(500).json({ message: 'Failed to fetch business card status' });
+  app.get("/api/business-cards/:id/status", asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      throw createError('Invalid business card ID', 400);
     }
-  });
+    
+    const businessCard = await storage.getBusinessCard(id);
+    
+    if (!businessCard) {
+      throw createError('Business card not found', 404);
+    }
+    
+    res.json({
+      id: businessCard.id,
+      filename: businessCard.filename,
+      status: businessCard.processingStatus,
+      contactId: businessCard.contactId,
+      processingError: businessCard.processingError,
+      ocrConfidence: businessCard.ocrConfidence,
+      aiConfidence: businessCard.aiConfidence,
+      extractedData: businessCard.extractedData,
+      createdAt: businessCard.createdAt,
+      updatedAt: businessCard.updatedAt
+    });
+  }));
 
   // Get recent uploads with pagination
-  app.get("/api/business-cards/recent", async (req, res) => {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 5;
-      const offset = (page - 1) * limit;
-      
-      const recentCards = await storage.getRecentBusinessCards(limit, offset);
-      const totalCount = await storage.getBusinessCardsCount();
-      const totalPages = Math.ceil(totalCount / limit);
-      
-      res.json({
-        data: mapBusinessCardsArray(recentCards),
-        pagination: {
-          page,
-          limit,
-          totalCount,
-          totalPages,
-          hasNext: page < totalPages,
-          hasPrev: page > 1
-        }
-      });
-    } catch (error) {
-      console.error('Error fetching recent business cards:', error);
-      res.status(500).json({ message: 'Failed to fetch recent business cards' });
-    }
-  });
-
-  // Delete contact
-  app.delete("/api/contacts/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const success = await storage.deleteContact(id);
-      
-      if (!success) {
-        return res.status(404).json({ message: 'Contact not found' });
+  app.get("/api/business-cards/recent", asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 5;
+    const offset = (page - 1) * limit;
+    
+    const recentCards = await storage.getRecentBusinessCards(limit, offset);
+    const totalCount = await storage.getBusinessCardsCount();
+    const totalPages = Math.ceil(totalCount / limit);
+    
+    res.json({
+      data: mapBusinessCardsArray(recentCards),
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
       }
-      
-      res.json({ message: 'Contact deleted successfully' });
-    } catch (error) {
-      console.error('Error deleting contact:', error);
-      res.status(500).json({ message: 'Failed to delete contact' });
-    }
-  });
+    });
+  }));
 
   // Get dashboard statistics
-  app.get("/api/stats", async (req, res) => {
-    try {
-      const stats = await storage.getStats();
-      res.json(stats);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-      res.status(500).json({ message: 'Failed to fetch statistics' });
-    }
-  });
+  app.get("/api/stats", asyncHandler(async (req: Request, res: Response) => {
+    const stats = await storage.getStats();
+    res.json(stats);
+  }));
 
   // Background processing function
   async function processBusinessCard(businessCardId: number, imagePath: string) {
