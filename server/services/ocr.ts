@@ -1,13 +1,18 @@
 import { createWorker } from 'tesseract.js';
+import sharp from 'sharp';
 import fs from 'fs';
+
+export interface BoundingBox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
 
 export interface OCRResult {
   text: string;
   confidence: number;
-  boundingBoxes: Array<{
-    text: string;
-    bounds: Array<{ x: number; y: number }>;
-  }>;
+  boundingBoxes: BoundingBox[];
 }
 
 export async function extractTextFromImage(imagePath: string): Promise<OCRResult> {
@@ -29,6 +34,22 @@ export async function extractTextFromImage(imagePath: string): Promise<OCRResult
   }
 }
 
+async function preProcessImage(imageBuffer: Buffer): Promise<Buffer> {
+    try {
+        const processedImageBuffer = await sharp(imageBuffer)
+            .negate({ alpha: false }) // Invert colors, keeping it to 3 channels (no alpha)
+            .grayscale() // Convert to grayscale
+            .normalize() // Improve contrast
+            .toBuffer();
+        return processedImageBuffer;
+    } catch (error: any) {
+        console.error('Sharp image pre-processing failed:', error);
+        // If sharp fails, return the original buffer and let Tesseract try
+        return imageBuffer;
+    }
+}
+
+
 export async function extractTextFromBuffer(imageBuffer: Buffer): Promise<OCRResult> {
   console.log('Using Tesseract OCR to extract text from buffer');
   
@@ -39,21 +60,9 @@ export async function extractTextFromBuffer(imageBuffer: Buffer): Promise<OCRRes
       return { text: '', confidence: 0, boundingBoxes: [] };
     }
 
-    // Check for common image formats
-    const signature = imageBuffer.toString('hex', 0, 8).toUpperCase();
-    const isPNG = signature.startsWith('89504E47');
-    const isJPEG = signature.startsWith('FFD8FF');
-    const isWebP = signature.includes('57454250');
-    const isGIF = signature.startsWith('47494638');
-    const isBMP = signature.startsWith('424D');
-    
-    if (!isPNG && !isJPEG && !isWebP && !isGIF && !isBMP) {
-      console.warn(`Unsupported image format detected. Signature: ${signature}`);
-      return { text: '', confidence: 0, boundingBoxes: [] };
-    }
-
     const worker = await createWorker('eng');
-    const { data: { text, confidence } } = await worker.recognize(imageBuffer);
+    const preprocessedBuffer = await preProcessImage(imageBuffer);
+    const { data: { text, confidence } } = await worker.recognize(preprocessedBuffer);
     await worker.terminate();
     
     return {

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@clerk/clerk-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,12 +12,13 @@ import { ContactModal } from "@/components/ui/contact-modal";
 import { StatsCard } from "@/components/ui/stats-card";
 import { ContactTable } from "@/components/ui/contact-table";
 import { ProcessingStatus } from "@/components/ui/processing-status";
+import { VerificationModal } from "@/components/ui/verification-modal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import type { Contact, BusinessCard } from "@shared/schema";
+import type { Contact, BusinessCard, InsertContact } from "@shared/schema";
 import { 
   Search, 
   Filter, 
@@ -75,8 +77,59 @@ export default function Dashboard() {
   const [uploadsPageSize, setUploadsPageSize] = useState(5);
   const [isUploadsCollapsed, setIsUploadsCollapsed] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<number | null>(null);
+  const [cardToVerify, setCardToVerify] = useState<BusinessCard | null>(null);
+  const [pollingIds, setPollingIds] = useState<number[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { getToken } = useAuth();
+
+  const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
+    const token = await getToken();
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) {
+      const text = (await res.text()) || res.statusText;
+      throw new Error(`${res.status}: ${text}`);
+    }
+    return res.json();
+  };
+
+  // --- Start Polling when a new upload begins ---
+  useEffect(() => {
+    if (pollingIds.length === 0) return;
+
+    const interval = setInterval(async () => {
+      let stillProcessing = false;
+      for (const id of pollingIds) {
+        try {
+          const res = await authenticatedFetch(`/api/business-cards/${id}/status`);
+          if (res.status === 'processing') {
+            stillProcessing = true;
+          } else {
+            // Processing for this ID is done, remove it and refetch lists
+            setPollingIds(prev => prev.filter(pId => pId !== id));
+            refetchAll();
+          }
+        } catch (error) {
+          console.error(`Error polling for card ${id}:`, error);
+          // Stop polling for this ID if it errors
+          setPollingIds(prev => prev.filter(pId => pId !== id));
+        }
+      }
+      if (!stillProcessing) {
+        clearInterval(interval);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [pollingIds]);
+
 
   // Debounce search query to reduce API calls
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -84,11 +137,13 @@ export default function Dashboard() {
   // Fetch dashboard stats
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/stats"],
+    queryFn: () => authenticatedFetch("/api/stats"),
   });
 
   // Fetch contacts
   const { data: contactsData, isLoading: contactsLoading, refetch: refetchContacts } = useQuery<ContactsResponse>({
     queryKey: ["/api/contacts"],
+    queryFn: () => authenticatedFetch("/api/contacts"),
   });
 
   // Fetch recent uploads with pagination
@@ -98,15 +153,30 @@ export default function Dashboard() {
       const url = new URL('/api/business-cards/recent', window.location.origin);
       url.searchParams.set('page', uploadsPage.toString());
       url.searchParams.set('limit', uploadsPageSize.toString());
-      return fetch(url.toString()).then(res => res.json());
+      return authenticatedFetch(url.toString());
     },
   });
 
   // Search contacts with debounced query
   const { data: searchResults, isLoading: searchLoading } = useQuery<SearchResponse>({
     queryKey: ["/api/contacts/search", debouncedSearchQuery],
+    queryFn: () => authenticatedFetch(`/api/contacts/search?q=${debouncedSearchQuery}`),
     enabled: debouncedSearchQuery.length > 0,
   });
+
+  const refetchAll = () => {
+    // Invalidate all related queries to refresh the UI
+    queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/business-cards/recent"] });
+    // Reset to first page when new upload completes
+    setUploadsPage(1);
+  }
+
+  const handleUploadStarted = (cardId: number) => {
+    setPollingIds(prev => [...prev, cardId]);
+    refetchAll(); // Initial refetch to show the 'processing' state
+  };
 
   const handleContactClick = (contact: Contact) => {
     setSelectedContact(contact);
@@ -118,12 +188,7 @@ export default function Dashboard() {
       title: "Processing Complete",
       description: "Business card has been processed and contact created.",
     });
-    // Invalidate all related queries to refresh the UI
-    queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/business-cards/recent"] });
-    // Reset to first page when new upload completes
-    setUploadsPage(1);
+    refetchAll();
   };
 
   const handleExportContacts = () => {
@@ -133,12 +198,58 @@ export default function Dashboard() {
     });
   };
 
+  const verifyContactMutation = useMutation({
+    mutationFn: async (data: { cardId: number; contactData: InsertContact }) => {
+        const token = await getToken();
+        return apiRequest(`/api/business-cards/${data.cardId}/verify`, {
+            method: 'POST',
+            headers: {
+                "Authorization": `Bearer ${token}`,
+            },
+            body: JSON.stringify(data.contactData),
+        });
+    },
+    onSuccess: () => {
+        toast({
+            title: "Contact Verified",
+            description: "The new contact has been saved successfully.",
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/business-cards/recent"] });
+        setCardToVerify(null);
+    },
+    onError: () => {
+        toast({
+            title: "Verification Failed",
+            description: "There was an error saving the contact. Please try again.",
+            variant: "destructive",
+        });
+    },
+  });
+
+  const handleVerify = (businessCard: BusinessCard) => {
+      setCardToVerify(businessCard);
+  };
+
+  const handleSaveVerification = (contactData: InsertContact) => {
+      if (cardToVerify) {
+          verifyContactMutation.mutate({ cardId: cardToVerify.id, contactData });
+      }
+  };
+
+
   // Delete contact mutation
   const deleteContactMutation = useMutation({
-    mutationFn: (contactId: number) => 
-      apiRequest(`/api/contacts/${contactId}`, {
+    mutationFn: async (contactId: number) => {
+      const token = await getToken();
+      return apiRequest(`/api/contacts/${contactId}`, {
         method: 'DELETE',
-      }),
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        }
+      });
+    },
     onSuccess: () => {
       toast({
         title: "Contact Deleted",
@@ -229,7 +340,7 @@ export default function Dashboard() {
                 <CardTitle>Upload Business Cards</CardTitle>
               </CardHeader>
               <CardContent>
-                <FileUpload onUploadComplete={handleUploadComplete} />
+                <FileUpload onUploadStarted={handleUploadStarted} />
                 
                 {/* Recent Uploads */}
                 {recentUploads?.data && recentUploads.data.length > 0 && (
@@ -275,31 +386,41 @@ export default function Dashboard() {
                                     </p>
                                   </div>
                                 </div>
-                                <ProcessingStatus businessCard={upload} />
+                                <ProcessingStatus 
+                                  businessCard={{
+                                    ...upload,
+                                    processingError: upload.processingError || undefined,
+                                    ocrConfidence: upload.ocrConfidence || undefined,
+                                    aiConfidence: upload.aiConfidence || undefined,
+                                    createdAt: upload.createdAt.toString(),
+                                    updatedAt: upload.updatedAt.toString()
+                                  }}
+                                  onVerify={handleVerify}
+                                />
                               </div>
                               
                               {/* Show confidence scores and errors if available */}
-                              {(upload.ocrConfidence !== undefined || upload.aiConfidence !== undefined || upload.processingError) && (
+                              {(upload.ocrConfidence !== null || upload.aiConfidence !== null || upload.processingError) && (
                                 <div className="ml-7 pl-4 border-l-2 border-gray-200 space-y-1">
-                                  {upload.ocrConfidence !== undefined && (
+                                  {upload.ocrConfidence !== null && (
                                     <div className="flex justify-between items-center text-xs">
                                       <span className="text-gray-600">OCR Quality:</span>
                                       <span className={`font-medium ${
-                                        upload.ocrConfidence >= 0.8 ? 'text-green-600' :
-                                        upload.ocrConfidence >= 0.6 ? 'text-yellow-600' : 'text-red-600'
+                                        (upload.ocrConfidence || 0) >= 0.8 ? 'text-green-600' :
+                                        (upload.ocrConfidence || 0) >= 0.6 ? 'text-yellow-600' : 'text-red-600'
                                       }`}>
-                                        {Math.round(upload.ocrConfidence * 100)}%
+                                        {Math.round((upload.ocrConfidence || 0) * 100)}%
                                       </span>
                                     </div>
                                   )}
-                                  {upload.aiConfidence !== undefined && (
+                                  {upload.aiConfidence !== null && (
                                     <div className="flex justify-between items-center text-xs">
                                       <span className="text-gray-600">AI Extraction:</span>
                                       <span className={`font-medium ${
-                                        upload.aiConfidence >= 0.8 ? 'text-green-600' :
-                                        upload.aiConfidence >= 0.6 ? 'text-yellow-600' : 'text-red-600'
+                                        (upload.aiConfidence || 0) >= 0.8 ? 'text-green-600' :
+                                        (upload.aiConfidence || 0) >= 0.6 ? 'text-yellow-600' : 'text-red-600'
                                       }`}>
-                                        {Math.round(upload.aiConfidence * 100)}%
+                                        {Math.round((upload.aiConfidence || 0) * 100)}%
                                       </span>
                                     </div>
                                   )}
@@ -433,6 +554,13 @@ export default function Dashboard() {
         contact={selectedContact}
         isOpen={isContactModalOpen}
         onClose={() => setIsContactModalOpen(false)}
+      />
+
+      <VerificationModal
+        businessCard={cardToVerify}
+        isOpen={cardToVerify !== null}
+        onClose={() => setCardToVerify(null)}
+        onSave={handleSaveVerification}
       />
 
       {/* Delete Confirmation Dialog */}

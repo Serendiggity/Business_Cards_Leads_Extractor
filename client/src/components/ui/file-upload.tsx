@@ -7,10 +7,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { CloudUpload, Plus, X } from "lucide-react";
 
 interface FileUploadProps {
-  onUploadComplete?: () => void;
+  onUploadStarted?: (cardId: number) => void;
 }
 
-export function FileUpload({ onUploadComplete }: FileUploadProps) {
+export function FileUpload({ onUploadStarted }: FileUploadProps) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -83,6 +83,8 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
         });
         
         if (response.ok) {
+          const result = await response.json();
+          onUploadStarted?.(result.id);
           setUploadProgress(((i + 1) / selectedFiles.length) * 100);
           
           toast({
@@ -96,11 +98,6 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
       }
 
       setSelectedFiles([]);
-      
-      // Add a small delay to ensure backend processing completes
-      setTimeout(() => {
-        onUploadComplete?.();
-      }, 1000);
     } catch (error) {
       console.error('Upload error:', error);
       toast({

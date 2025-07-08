@@ -57,38 +57,23 @@ export async function extractContactDataFromText(ocrText: string): Promise<Extra
       response_format: { type: "json_object" },
     });
 
-    const result = JSON.parse(response.choices[0].message.content || '{}');
-    console.log('AI extraction raw result:', result);
+    const choice = response.choices[0];
+    if (choice.message.content) {
+      console.log('AI extraction raw output:', choice.message.content);
+      const data = JSON.parse(choice.message.content);
+      console.log('Parsed AI extraction data:', data);
+      return data;
+    }
     
-    // Check if we extracted meaningful data
-    const hasName = result.name && result.name.trim().length > 0;
-    const hasEmail = result.email && result.email.includes('@');
-    const hasPhone = result.phone && result.phone.trim().length > 0;
-    const hasCompany = result.company && result.company.trim().length > 0;
-    
-    const hasMeaningfulData = hasName || hasEmail || hasPhone || hasCompany;
-    
-    const extractedData = {
-      name: result.name || undefined,
-      email: result.email || undefined,
-      phone: result.phone || undefined,
-      company: result.company || undefined,
-      title: result.title || undefined,
-      industry: result.industry || undefined,
-      address: result.address || undefined,
-      website: result.website || undefined,
-      confidence: hasMeaningfulData ? Math.max(0.3, result.confidence || 0.8) : (result.confidence || 0.1),
-    };
-    
-    console.log('AI extraction final result:', extractedData);
-    return extractedData;
-  } catch (error) {
-    console.error('AI extraction failed:', error);
-    throw new Error(`AI extraction failed: ${error.message}`);
+    // Fallback if content is null
+    return { confidence: 0 };
+  } catch(error) {
+    console.error('Error processing AI extraction:', error);
+    return { confidence: 0 };
   }
 }
 
-export async function processNaturalLanguageQuery(query: string, contacts: any[]): Promise<any[]> {
+export async function processNaturalLanguageQuery(query: string): Promise<any> {
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -96,22 +81,18 @@ export async function processNaturalLanguageQuery(query: string, contacts: any[]
         {
           role: "system",
           content: `You are a smart contact database assistant. Given a natural language query about contacts, 
-          analyze the query and return a JSON object with filtering criteria.
+          analyze the query and return a JSON object with filtering criteria for a Drizzle ORM query.
           
-          Return JSON with these possible fields:
-          - searchTerms: array of terms to search across all fields
-          - industry: specific industry filter
-          - company: specific company filter
-          - timeframe: if query mentions time (recent, last week, etc.)
-          - tags: specific tags to filter by
-          - sortBy: field to sort by (name, company, date, etc.)
-          - sortOrder: "asc" or "desc"
+          Return JSON with these possible fields, using Drizzle operators where applicable:
+          - where: An object that can contain operators like 'or', 'and', 'ilike', 'eq', 'gte', 'lte'.
+            - For text searches, use 'ilike' for case-insensitive matching.
+            - For date searches, use 'gte' or 'lte'.
+          - orderBy: An object with 'column' and 'order' ('asc' or 'desc').
           
           Examples:
-          "construction industry" -> {"industry": "Construction"}
-          "recent contacts" -> {"timeframe": "recent", "sortBy": "date", "sortOrder": "desc"}
-          "people from TechCorp" -> {"company": "TechCorp"}
-          "john from construction" -> {"searchTerms": ["john"], "industry": "Construction"}`
+          "construction industry" -> {"where": {"industry": {"ilike": "Construction"}}}
+          "recent contacts from TechCorp" -> {"where": {"and": [{"company": {"ilike": "TechCorp"}}, {"createdAt": {"gte": "2024-01-01T00:00:00.000Z"}}]}, "orderBy": {"column": "createdAt", "order": "desc"}}
+          "john from construction" -> {"where": {"and": [{"name": {"ilike": "john"}}, {"industry": {"ilike": "Construction"}}]}}`
         },
         {
           role: "user",
@@ -122,50 +103,9 @@ export async function processNaturalLanguageQuery(query: string, contacts: any[]
     });
 
     const criteria = JSON.parse(response.choices[0].message.content || '{}');
-    
-    // Apply filtering logic based on criteria
-    let filteredContacts = contacts;
-    
-    if (criteria.searchTerms && criteria.searchTerms.length > 0) {
-      filteredContacts = filteredContacts.filter(contact => {
-        const searchableText = `${contact.name || ''} ${contact.company || ''} ${contact.email || ''} ${contact.title || ''} ${contact.industry || ''} ${contact.notes || ''}`.toLowerCase();
-        return criteria.searchTerms.some(term => searchableText.includes(term.toLowerCase()));
-      });
-    }
-    
-    if (criteria.industry) {
-      filteredContacts = filteredContacts.filter(contact => 
-        contact.industry && contact.industry.toLowerCase().includes(criteria.industry.toLowerCase())
-      );
-    }
-    
-    if (criteria.company) {
-      filteredContacts = filteredContacts.filter(contact => 
-        contact.company && contact.company.toLowerCase().includes(criteria.company.toLowerCase())
-      );
-    }
-    
-    // Apply sorting
-    if (criteria.sortBy) {
-      filteredContacts.sort((a, b) => {
-        const fieldA = a[criteria.sortBy] || '';
-        const fieldB = b[criteria.sortBy] || '';
-        
-        if (criteria.sortOrder === 'desc') {
-          return fieldB.localeCompare(fieldA);
-        } else {
-          return fieldA.localeCompare(fieldB);
-        }
-      });
-    }
-    
-    return filteredContacts;
-  } catch (error) {
-    console.error('Natural language query processing failed:', error);
-    // Fall back to basic text search if AI fails
-    return contacts.filter(contact => {
-      const searchableText = `${contact.name || ''} ${contact.company || ''} ${contact.email || ''} ${contact.title || ''} ${contact.industry || ''} ${contact.notes || ''}`.toLowerCase();
-      return searchableText.includes(query.toLowerCase());
-    });
+    return criteria;
+  } catch(e) {
+    console.error("Error processing natural language query", e)
+    return {}
   }
 }

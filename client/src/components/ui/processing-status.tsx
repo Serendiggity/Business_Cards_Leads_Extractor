@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -17,9 +18,10 @@ interface ProcessingStatusProps {
     updatedAt: string;
   };
   showDetails?: boolean;
+  onVerify?: (businessCard: any) => void;
 }
 
-export function ProcessingStatus({ businessCard, showDetails = false }: ProcessingStatusProps) {
+export function ProcessingStatus({ businessCard, showDetails = false, onVerify }: ProcessingStatusProps) {
   const getStatusIcon = (status: string) => {
     if (!status) return <Clock className="h-4 w-4 text-gray-500" />;
     switch (status) {
@@ -29,6 +31,8 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
         return <XCircle className="h-4 w-4 text-red-500" />;
       case 'processing':
         return <Clock className="h-4 w-4 text-blue-500" />;
+      case 'pending-verification':
+        return <Eye className="h-4 w-4 text-yellow-500" />;
       default:
         return <Clock className="h-4 w-4 text-gray-500" />;
     }
@@ -43,6 +47,8 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
         return 'bg-red-100 text-red-800';
       case 'processing':
         return 'bg-blue-100 text-blue-800';
+      case 'pending-verification':
+        return 'bg-yellow-100 text-yellow-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -53,7 +59,7 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
     if (status === 'completed' && businessCard.processingError) {
       return 'Completed with warnings';
     }
-    return status.charAt(0).toUpperCase() + status.slice(1);
+    return status.replace('-', ' ').charAt(0).toUpperCase() + status.replace('-', ' ').slice(1);
   };
 
   const getConfidenceColor = (confidence: number) => {
@@ -75,6 +81,11 @@ export function ProcessingStatus({ businessCard, showDetails = false }: Processi
         <Badge variant="outline" className={getStatusColor(businessCard.processingStatus)}>
           {getStatusText(businessCard.processingStatus)}
         </Badge>
+        {businessCard.processingStatus === 'pending-verification' && onVerify && (
+          <Button variant="outline" size="sm" onClick={() => onVerify(businessCard)} className="h-6 px-2 text-xs">
+            Verify
+          </Button>
+        )}
       </div>
     );
   }
