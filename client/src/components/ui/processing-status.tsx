@@ -1,9 +1,9 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle, AlertCircle, XCircle, Clock, Eye } from "lucide-react";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { CheckCircle, AlertCircle, XCircle, Clock, Eye } from 'lucide-react';
 
 interface ProcessingStatusProps {
   businessCard: {
@@ -21,7 +21,11 @@ interface ProcessingStatusProps {
   onVerify?: (businessCard: any) => void;
 }
 
-export function ProcessingStatus({ businessCard, showDetails = false, onVerify }: ProcessingStatusProps) {
+export function ProcessingStatus({
+  businessCard,
+  showDetails = false,
+  onVerify,
+}: ProcessingStatusProps) {
   const getStatusIcon = (status: string) => {
     if (!status) return <Clock className="h-4 w-4 text-gray-500" />;
     switch (status) {
@@ -42,7 +46,9 @@ export function ProcessingStatus({ businessCard, showDetails = false, onVerify }
     if (!status) return 'bg-gray-100 text-gray-800';
     switch (status) {
       case 'completed':
-        return businessCard.processingError ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800';
+        return businessCard.processingError
+          ? 'bg-yellow-100 text-yellow-800'
+          : 'bg-green-100 text-green-800';
       case 'failed':
         return 'bg-red-100 text-red-800';
       case 'processing':
@@ -59,7 +65,10 @@ export function ProcessingStatus({ businessCard, showDetails = false, onVerify }
     if (status === 'completed' && businessCard.processingError) {
       return 'Completed with warnings';
     }
-    return status.replace('-', ' ').charAt(0).toUpperCase() + status.replace('-', ' ').slice(1);
+    return (
+      status.replace('-', ' ').charAt(0).toUpperCase() +
+      status.replace('-', ' ').slice(1)
+    );
   };
 
   const getConfidenceColor = (confidence: number) => {
@@ -78,14 +87,23 @@ export function ProcessingStatus({ businessCard, showDetails = false, onVerify }
     return (
       <div className="flex items-center gap-2">
         {getStatusIcon(businessCard.processingStatus)}
-        <Badge variant="outline" className={getStatusColor(businessCard.processingStatus)}>
+        <Badge
+          variant="outline"
+          className={getStatusColor(businessCard.processingStatus)}
+        >
           {getStatusText(businessCard.processingStatus)}
         </Badge>
-        {businessCard.processingStatus === 'pending-verification' && onVerify && (
-          <Button variant="outline" size="sm" onClick={() => onVerify(businessCard)} className="h-6 px-2 text-xs">
-            Verify
-          </Button>
-        )}
+        {businessCard.processingStatus === 'pending-verification' &&
+          onVerify && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onVerify(businessCard)}
+              className="h-6 px-2 text-xs"
+            >
+              Verify
+            </Button>
+          )}
       </div>
     );
   }
@@ -102,7 +120,10 @@ export function ProcessingStatus({ businessCard, showDetails = false, onVerify }
         {/* Status Overview */}
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Status:</span>
-          <Badge variant="outline" className={getStatusColor(businessCard.processingStatus)}>
+          <Badge
+            variant="outline"
+            className={getStatusColor(businessCard.processingStatus)}
+          >
             {getStatusText(businessCard.processingStatus)}
           </Badge>
         </div>
@@ -111,26 +132,31 @@ export function ProcessingStatus({ businessCard, showDetails = false, onVerify }
         {businessCard.processingError && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {businessCard.processingError}
-            </AlertDescription>
+            <AlertDescription>{businessCard.processingError}</AlertDescription>
           </Alert>
         )}
 
         {/* Confidence Scores */}
-        {(businessCard.ocrConfidence !== undefined || businessCard.aiConfidence !== undefined) && (
+        {(businessCard.ocrConfidence !== undefined ||
+          businessCard.aiConfidence !== undefined) && (
           <div className="space-y-3">
             <h4 className="text-sm font-medium">Processing Confidence</h4>
-            
+
             {businessCard.ocrConfidence !== undefined && (
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm">OCR Text Extraction</span>
-                  <span className={`text-sm font-medium ${getConfidenceColor(businessCard.ocrConfidence)}`}>
-                    {Math.round(businessCard.ocrConfidence * 100)}% ({getConfidenceLabel(businessCard.ocrConfidence)})
+                  <span
+                    className={`text-sm font-medium ${getConfidenceColor(businessCard.ocrConfidence)}`}
+                  >
+                    {Math.round(businessCard.ocrConfidence * 100)}% (
+                    {getConfidenceLabel(businessCard.ocrConfidence)})
                   </span>
                 </div>
-                <Progress value={businessCard.ocrConfidence * 100} className="h-2" />
+                <Progress
+                  value={businessCard.ocrConfidence * 100}
+                  className="h-2"
+                />
               </div>
             )}
 
@@ -138,47 +164,63 @@ export function ProcessingStatus({ businessCard, showDetails = false, onVerify }
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm">AI Data Extraction</span>
-                  <span className={`text-sm font-medium ${getConfidenceColor(businessCard.aiConfidence)}`}>
-                    {Math.round(businessCard.aiConfidence * 100)}% ({getConfidenceLabel(businessCard.aiConfidence)})
+                  <span
+                    className={`text-sm font-medium ${getConfidenceColor(businessCard.aiConfidence)}`}
+                  >
+                    {Math.round(businessCard.aiConfidence * 100)}% (
+                    {getConfidenceLabel(businessCard.aiConfidence)})
                   </span>
                 </div>
-                <Progress value={businessCard.aiConfidence * 100} className="h-2" />
+                <Progress
+                  value={businessCard.aiConfidence * 100}
+                  className="h-2"
+                />
               </div>
             )}
           </div>
         )}
 
         {/* Extracted Data Summary */}
-        {businessCard.extractedData && (() => {
-          const extractedData = typeof businessCard.extractedData === 'string' 
-            ? JSON.parse(businessCard.extractedData) 
-            : businessCard.extractedData;
-          
-          return (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Extracted Information</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-gray-600">Name:</span> {extractedData.name || 'Not found'}
-                </div>
-                <div>
-                  <span className="text-gray-600">Company:</span> {extractedData.company || 'Not found'}
-                </div>
-                <div>
-                  <span className="text-gray-600">Email:</span> {extractedData.email || 'Not found'}
-                </div>
-                <div>
-                  <span className="text-gray-600">Phone:</span> {extractedData.phone || 'Not found'}
+        {businessCard.extractedData &&
+          (() => {
+            const extractedData =
+              typeof businessCard.extractedData === 'string'
+                ? JSON.parse(businessCard.extractedData)
+                : businessCard.extractedData;
+
+            return (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Extracted Information</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-gray-600">Name:</span>{' '}
+                    {extractedData.name || 'Not found'}
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Company:</span>{' '}
+                    {extractedData.company || 'Not found'}
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Email:</span>{' '}
+                    {extractedData.email || 'Not found'}
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Phone:</span>{' '}
+                    {extractedData.phone || 'Not found'}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })()}
+            );
+          })()}
 
         {/* Timestamps */}
         <div className="text-xs text-gray-500 space-y-1">
-          <div>Uploaded: {new Date(businessCard.createdAt).toLocaleString()}</div>
-          <div>Last Updated: {new Date(businessCard.updatedAt).toLocaleString()}</div>
+          <div>
+            Uploaded: {new Date(businessCard.createdAt).toLocaleString()}
+          </div>
+          <div>
+            Last Updated: {new Date(businessCard.updatedAt).toLocaleString()}
+          </div>
         </div>
       </CardContent>
     </Card>

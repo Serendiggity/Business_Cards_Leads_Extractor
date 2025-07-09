@@ -1,4 +1,4 @@
-import { AuthObject } from "@clerk/clerk-sdk-node";
+import { AuthObject } from '@clerk/clerk-sdk-node';
 
 declare global {
   namespace Express {
@@ -9,4 +9,4 @@ declare global {
 }
 
 // This empty export is needed to turn this file into a module
-export {}; 
+export {};

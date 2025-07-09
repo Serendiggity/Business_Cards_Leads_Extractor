@@ -14,7 +14,7 @@ export function mapBusinessCardToCamelCase(record: any) {
     aiConfidence: record.aiConfidence,
     contactId: record.contactId,
     createdAt: record.createdAt,
-    updatedAt: record.updatedAt
+    updatedAt: record.updatedAt,
   };
 }
 
@@ -37,10 +37,27 @@ export function mapContactToCamelCase(record: any) {
     tags: record.tags,
     businessCardId: record.businessCardId,
     createdAt: record.createdAt,
-    updatedAt: record.updatedAt
+    updatedAt: record.updatedAt,
   };
 }
 
 export function mapContactsArray(records: any[]) {
   return records.map(mapContactToCamelCase);
+}
+
+export function mapEventToCamelCase(record: any) {
+  return {
+    id: record.id,
+    name: record.name,
+    location: record.location,
+    date: record.date,
+    notes: record.notes,
+    userId: record.userId,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+  };
+}
+
+export function mapEventsArray(records: any[]) {
+  return records.map(mapEventToCamelCase);
 }

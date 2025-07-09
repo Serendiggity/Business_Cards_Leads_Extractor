@@ -6,7 +6,10 @@ export interface AppError extends Error {
   isOperational?: boolean;
 }
 
-export const createError = (message: string, statusCode: number = 500): AppError => {
+export const createError = (
+  message: string,
+  statusCode: number = 500,
+): AppError => {
   const error = new Error(message) as AppError;
   error.statusCode = statusCode;
   error.isOperational = true;
@@ -23,7 +26,7 @@ export const globalErrorHandler = (
   error: AppError | ZodError | Error,
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   console.error('Error:', error);
 
@@ -33,20 +36,20 @@ export const globalErrorHandler = (
       message: 'Validation failed',
       errors: error.errors.map((err: any) => ({
         field: err.path.join('.'),
-        message: err.message
-      }))
+        message: err.message,
+      })),
     });
   }
 
   // Handle operational errors
   if ('statusCode' in error && error.isOperational) {
     return res.status(error.statusCode || 500).json({
-      message: error.message
+      message: error.message,
     });
   }
 
   // Handle unknown errors
   res.status(500).json({
-    message: 'Internal server error'
+    message: 'Internal server error',
   });
 };

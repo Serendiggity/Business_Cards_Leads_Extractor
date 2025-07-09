@@ -1,9 +1,12 @@
-import OpenAI from "openai";
-import { InsertContact } from "@shared/schema";
+import OpenAI from 'openai';
+import { InsertContact } from '@shared/schema';
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key"
+const openai = new OpenAI({
+  apiKey:
+    process.env.OPENAI_API_KEY ||
+    process.env.OPENAI_API_KEY_ENV_VAR ||
+    'default_key',
 });
 
 export interface ExtractedContactData {
@@ -18,15 +21,17 @@ export interface ExtractedContactData {
   confidence: number;
 }
 
-export async function extractContactDataFromText(ocrText: string): Promise<ExtractedContactData> {
+export async function extractContactDataFromText(
+  ocrText: string,
+): Promise<ExtractedContactData> {
   console.log('AI extraction input text:', ocrText);
-  
+
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: 'gpt-4o',
       messages: [
         {
-          role: "system",
+          role: 'system',
           content: `You are an expert at extracting contact information from business card text. 
           The text may be noisy or contain OCR errors, so be flexible in your interpretation.
           
@@ -47,14 +52,14 @@ export async function extractContactDataFromText(ocrText: string): Promise<Extra
           - If you find ANY contact information (name, phone, email, company), set confidence to at least 0.3
           - Only use very low confidence (< 0.2) if the text appears to be completely unrelated to business cards
           
-          Return only valid JSON. If information is not clearly present, omit that field.`
+          Return only valid JSON. If information is not clearly present, omit that field.`,
         },
         {
-          role: "user",
-          content: `Extract contact information from this business card text:\n\n${ocrText}`
-        }
+          role: 'user',
+          content: `Extract contact information from this business card text:\n\n${ocrText}`,
+        },
       ],
-      response_format: { type: "json_object" },
+      response_format: { type: 'json_object' },
     });
 
     const choice = response.choices[0];
@@ -64,10 +69,10 @@ export async function extractContactDataFromText(ocrText: string): Promise<Extra
       console.log('Parsed AI extraction data:', data);
       return data;
     }
-    
+
     // Fallback if content is null
     return { confidence: 0 };
-  } catch(error) {
+  } catch (error) {
     console.error('Error processing AI extraction:', error);
     return { confidence: 0 };
   }
@@ -76,10 +81,10 @@ export async function extractContactDataFromText(ocrText: string): Promise<Extra
 export async function processNaturalLanguageQuery(query: string): Promise<any> {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: 'gpt-4o',
       messages: [
         {
-          role: "system",
+          role: 'system',
           content: `You are a smart contact database assistant. Given a natural language query about contacts, 
           analyze the query and return a JSON object with filtering criteria for a Drizzle ORM query.
           
@@ -92,20 +97,20 @@ export async function processNaturalLanguageQuery(query: string): Promise<any> {
           Examples:
           "construction industry" -> {"where": {"industry": {"ilike": "Construction"}}}
           "recent contacts from TechCorp" -> {"where": {"and": [{"company": {"ilike": "TechCorp"}}, {"createdAt": {"gte": "2024-01-01T00:00:00.000Z"}}]}, "orderBy": {"column": "createdAt", "order": "desc"}}
-          "john from construction" -> {"where": {"and": [{"name": {"ilike": "john"}}, {"industry": {"ilike": "Construction"}}]}}`
+          "john from construction" -> {"where": {"and": [{"name": {"ilike": "john"}}, {"industry": {"ilike": "Construction"}}]}}`,
         },
         {
-          role: "user",
-          content: query
-        }
+          role: 'user',
+          content: query,
+        },
       ],
-      response_format: { type: "json_object" },
+      response_format: { type: 'json_object' },
     });
 
     const criteria = JSON.parse(response.choices[0].message.content || '{}');
     return criteria;
-  } catch(e) {
-    console.error("Error processing natural language query", e)
-    return {}
+  } catch (e) {
+    console.error('Error processing natural language query', e);
+    return {};
   }
 }

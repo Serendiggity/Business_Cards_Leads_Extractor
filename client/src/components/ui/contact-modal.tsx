@@ -1,14 +1,19 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { X, Plus, Mail, Linkedin } from "lucide-react";
+import { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import { X, Plus, Mail, Linkedin } from 'lucide-react';
 
 interface ContactModalProps {
   contact: any;
@@ -17,9 +22,9 @@ interface ContactModalProps {
 }
 
 export function ContactModal({ contact, isOpen, onClose }: ContactModalProps) {
-  const [notes, setNotes] = useState(contact?.notes || "");
+  const [notes, setNotes] = useState(contact?.notes || '');
   const [tags, setTags] = useState<string[]>(contact?.tags || []);
-  const [newTag, setNewTag] = useState("");
+  const [newTag, setNewTag] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
 
@@ -28,7 +33,7 @@ export function ContactModal({ contact, isOpen, onClose }: ContactModalProps) {
   const getInitials = (name: string) => {
     return name
       .split(' ')
-      .map(word => word[0])
+      .map((word) => word[0])
       .join('')
       .toUpperCase()
       .slice(0, 2);
@@ -36,16 +41,16 @@ export function ContactModal({ contact, isOpen, onClose }: ContactModalProps) {
 
   const getIndustryColor = (industry: string) => {
     const colors = {
-      'Construction': 'bg-blue-100 text-blue-800',
-      'Technology': 'bg-purple-100 text-purple-800',
-      'Healthcare': 'bg-green-100 text-green-800',
-      'Finance': 'bg-yellow-100 text-yellow-800',
+      Construction: 'bg-blue-100 text-blue-800',
+      Technology: 'bg-purple-100 text-purple-800',
+      Healthcare: 'bg-green-100 text-green-800',
+      Finance: 'bg-yellow-100 text-yellow-800',
       'Real Estate': 'bg-indigo-100 text-indigo-800',
-      'Education': 'bg-pink-100 text-pink-800',
-      'Manufacturing': 'bg-gray-100 text-gray-800',
-      'Consulting': 'bg-orange-100 text-orange-800',
-      'Marketing': 'bg-red-100 text-red-800',
-      'Sales': 'bg-teal-100 text-teal-800',
+      Education: 'bg-pink-100 text-pink-800',
+      Manufacturing: 'bg-gray-100 text-gray-800',
+      Consulting: 'bg-orange-100 text-orange-800',
+      Marketing: 'bg-red-100 text-red-800',
+      Sales: 'bg-teal-100 text-teal-800',
     };
     return colors[industry] || 'bg-gray-100 text-gray-800';
   };
@@ -53,33 +58,33 @@ export function ContactModal({ contact, isOpen, onClose }: ContactModalProps) {
   const addTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim())) {
       setTags([...tags, newTag.trim()]);
-      setNewTag("");
+      setNewTag('');
     }
   };
 
   const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
+    setTags(tags.filter((tag) => tag !== tagToRemove));
   };
 
   const handleSave = async () => {
     try {
       await apiRequest('PUT', `/api/contacts/${contact.id}`, {
         notes,
-        tags
+        tags,
       });
-      
+
       toast({
-        title: "Contact Updated",
-        description: "The contact has been updated successfully.",
+        title: 'Contact Updated',
+        description: 'The contact has been updated successfully.',
       });
-      
+
       setIsEditing(false);
     } catch (error) {
       console.error('Update error:', error);
       toast({
-        title: "Update Failed",
-        description: "There was an error updating the contact.",
-        variant: "destructive",
+        title: 'Update Failed',
+        description: 'There was an error updating the contact.',
+        variant: 'destructive',
       });
     }
   };
@@ -103,7 +108,9 @@ export function ContactModal({ contact, isOpen, onClose }: ContactModalProps) {
               {getInitials(contact.name)}
             </div>
             <div className="flex-1">
-              <h4 className="text-lg font-medium text-gray-900">{contact.name}</h4>
+              <h4 className="text-lg font-medium text-gray-900">
+                {contact.name}
+              </h4>
               <p className="text-gray-600">{contact.title}</p>
               <p className="text-gray-600">{contact.company}</p>
             </div>
@@ -113,14 +120,20 @@ export function ContactModal({ contact, isOpen, onClose }: ContactModalProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium text-gray-700">Email</Label>
-              <p className="text-sm text-gray-900 mt-1">{contact.email || 'Not provided'}</p>
+              <p className="text-sm text-gray-900 mt-1">
+                {contact.email || 'Not provided'}
+              </p>
             </div>
             <div>
               <Label className="text-sm font-medium text-gray-700">Phone</Label>
-              <p className="text-sm text-gray-900 mt-1">{contact.phone || 'Not provided'}</p>
+              <p className="text-sm text-gray-900 mt-1">
+                {contact.phone || 'Not provided'}
+              </p>
             </div>
             <div>
-              <Label className="text-sm font-medium text-gray-700">Industry</Label>
+              <Label className="text-sm font-medium text-gray-700">
+                Industry
+              </Label>
               <div className="mt-1">
                 {contact.industry ? (
                   <Badge className={getIndustryColor(contact.industry)}>
@@ -139,9 +152,16 @@ export function ContactModal({ contact, isOpen, onClose }: ContactModalProps) {
             </div>
             {contact.website && (
               <div className="md:col-span-2">
-                <Label className="text-sm font-medium text-gray-700">Website</Label>
+                <Label className="text-sm font-medium text-gray-700">
+                  Website
+                </Label>
                 <p className="text-sm text-gray-900 mt-1">
-                  <a href={contact.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  <a
+                    href={contact.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
                     {contact.website}
                   </a>
                 </p>
@@ -149,7 +169,9 @@ export function ContactModal({ contact, isOpen, onClose }: ContactModalProps) {
             )}
             {contact.address && (
               <div className="md:col-span-2">
-                <Label className="text-sm font-medium text-gray-700">Address</Label>
+                <Label className="text-sm font-medium text-gray-700">
+                  Address
+                </Label>
                 <p className="text-sm text-gray-900 mt-1">{contact.address}</p>
               </div>
             )}
@@ -159,10 +181,16 @@ export function ContactModal({ contact, isOpen, onClose }: ContactModalProps) {
 
           {/* Tags */}
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">Tags</Label>
+            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+              Tags
+            </Label>
             <div className="flex flex-wrap gap-2 mb-2">
               {tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className="flex items-center gap-1"
+                >
                   {tag}
                   {isEditing && (
                     <Button
@@ -211,7 +239,9 @@ export function ContactModal({ contact, isOpen, onClose }: ContactModalProps) {
 
           {/* Notes */}
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">Notes</Label>
+            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+              Notes
+            </Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -224,7 +254,9 @@ export function ContactModal({ contact, isOpen, onClose }: ContactModalProps) {
 
           {/* Future Phase Placeholders */}
           <div className="bg-gray-50 rounded-lg p-4">
-            <h5 className="text-sm font-medium text-gray-900 mb-2">Future Features (Coming Soon)</h5>
+            <h5 className="text-sm font-medium text-gray-900 mb-2">
+              Future Features (Coming Soon)
+            </h5>
             <div className="space-y-2">
               <div className="flex items-center text-sm text-gray-500">
                 <Mail className="mr-2 h-4 w-4" />
@@ -244,13 +276,9 @@ export function ContactModal({ contact, isOpen, onClose }: ContactModalProps) {
             Cancel
           </Button>
           {isEditing ? (
-            <Button onClick={handleSave}>
-              Save Changes
-            </Button>
+            <Button onClick={handleSave}>Save Changes</Button>
           ) : (
-            <Button onClick={() => setIsEditing(true)}>
-              Edit Contact
-            </Button>
+            <Button onClick={() => setIsEditing(true)}>Edit Contact</Button>
           )}
         </div>
       </DialogContent>

@@ -1,34 +1,79 @@
-import { contacts, businessCards, type Contact, type InsertContact, type BusinessCard, type InsertBusinessCard } from "@shared/schema";
-import { db } from "./db";
-import { eq, ilike, or, desc, asc, sql, SQL, and } from "drizzle-orm";
+import {
+  contacts,
+  businessCards,
+  events,
+  type Contact,
+  type InsertContact,
+  type BusinessCard,
+  type InsertBusinessCard,
+  type Event,
+  type InsertEvent,
+} from '@shared/schema';
+import { db } from './db';
+import { eq, ilike, or, desc, asc, sql, SQL, and } from 'drizzle-orm';
 
 type ContactColumn = keyof typeof contacts;
 const contactColumns = Object.keys(contacts) as ContactColumn[];
 function isContactColumn(key: string): key is ContactColumn {
-    return contactColumns.includes(key as ContactColumn);
+  return contactColumns.includes(key as ContactColumn);
 }
 
 export interface IStorage {
   // Contact methods
   createContact(contact: InsertContact): Promise<Contact>;
-  getContact(id: number): Promise<Contact | undefined>;
-  getAllContacts(limit?: number, offset?: number): Promise<Contact[]>;
-  updateContact(id: number, updates: Partial<InsertContact>): Promise<Contact | undefined>;
-  deleteContact(id: number): Promise<boolean>;
-  searchContacts(criteria: any): Promise<Contact[]>;
-  getContactsByIndustry(industry: string): Promise<Contact[]>;
-  getContactsCount(): Promise<number>;
-  
+  getContact(id: number, userId: string): Promise<Contact | undefined>;
+  getAllContacts(
+    userId: string,
+    limit?: number,
+    offset?: number,
+  ): Promise<Contact[]>;
+  updateContact(
+    id: number,
+    userId: string,
+    updates: Partial<InsertContact>,
+  ): Promise<Contact | undefined>;
+  deleteContact(id: number, userId: string): Promise<boolean>;
+  searchContacts(criteria: any, userId: string): Promise<Contact[]>;
+  getContactsByIndustry(
+    industry: string,
+    userId: string,
+  ): Promise<Contact[]>;
+  getContactsCount(userId: string): Promise<number>;
+
   // Business card methods
   createBusinessCard(businessCard: InsertBusinessCard): Promise<BusinessCard>;
-  getBusinessCard(id: number): Promise<BusinessCard | undefined>;
-  updateBusinessCard(id: number, updates: Partial<InsertBusinessCard>): Promise<BusinessCard | undefined>;
-  getBusinessCardsByStatus(status: string): Promise<BusinessCard[]>;
-  getRecentBusinessCards(limit: number, offset?: number): Promise<BusinessCard[]>;
-  getBusinessCardsCount(): Promise<number>;
-  
+  getBusinessCard(
+    id: number,
+    userId: string,
+  ): Promise<BusinessCard | undefined>;
+  updateBusinessCard(
+    id: number,
+    updates: Partial<InsertBusinessCard>,
+  ): Promise<BusinessCard | undefined>;
+  getBusinessCardsByStatus(
+    status: string,
+    userId: string,
+  ): Promise<BusinessCard[]>;
+  getRecentBusinessCards(
+    userId: string,
+    limit: number,
+    offset?: number,
+  ): Promise<BusinessCard[]>;
+  getBusinessCardsCount(userId: string): Promise<number>;
+
+  // Event methods
+  createEvent(event: InsertEvent): Promise<Event>;
+  getEvent(id: number, userId: string): Promise<Event | undefined>;
+  getAllEvents(userId: string): Promise<Event[]>;
+  updateEvent(
+    id: number,
+    userId: string,
+    updates: Partial<InsertEvent>,
+  ): Promise<Event | undefined>;
+  deleteEvent(id: number, userId: string): Promise<boolean>;
+
   // Statistics methods
-  getStats(): Promise<{
+  getStats(userId: string): Promise<{
     totalContacts: number;
     cardsProcessed: number;
     categories: number;
@@ -49,51 +94,71 @@ export class DatabaseStorage implements IStorage {
     return newContact;
   }
 
-  async getContact(id: number): Promise<Contact | undefined> {
-    const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
+  async getContact(id: number, userId: string): Promise<Contact | undefined> {
+    const [contact] = await db
+      .select()
+      .from(contacts)
+      .where(and(eq(contacts.id, id), eq(contacts.userId, userId)));
     return contact || undefined;
   }
 
-  async getAllContacts(limit = 50, offset = 0): Promise<Contact[]> {
+  async getAllContacts(
+    userId: string,
+    limit = 50,
+    offset = 0,
+  ): Promise<Contact[]> {
     return await db
       .select()
       .from(contacts)
+      .where(eq(contacts.userId, userId))
       .orderBy(desc(contacts.createdAt))
       .limit(limit)
       .offset(offset);
   }
 
-  async updateContact(id: number, updates: Partial<InsertContact>): Promise<Contact | undefined> {
+  async updateContact(
+    id: number,
+    userId: string,
+    updates: Partial<InsertContact>,
+  ): Promise<Contact | undefined> {
     const [updated] = await db
       .update(contacts)
       .set({
         ...updates,
         updatedAt: new Date(),
       })
-      .where(eq(contacts.id, id))
+      .where(and(eq(contacts.id, id), eq(contacts.userId, userId)))
       .returning();
     return updated || undefined;
   }
 
-  async deleteContact(id: number): Promise<boolean> {
+  async deleteContact(id: number, userId: string): Promise<boolean> {
     // First, update any business cards that reference this contact
-    await db.update(businessCards)
+    await db
+      .update(businessCards)
       .set({ contactId: null })
-      .where(eq(businessCards.contactId, id));
-    
+      .where(and(eq(businessCards.contactId, id), eq(businessCards.userId, userId)));
+
     // Then delete the contact
-    const result = await db.delete(contacts).where(eq(contacts.id, id));
+    const result = await db
+      .delete(contacts)
+      .where(and(eq(contacts.id, id), eq(contacts.userId, userId)));
     return (result.rowCount || 0) > 0;
   }
 
-  async searchContacts(criteria: any): Promise<Contact[]> {
+  async searchContacts(criteria: any, userId: string): Promise<Contact[]> {
     let query = db.select().from(contacts).$dynamic();
+    const userCondition = eq(contacts.userId, userId);
 
     if (criteria.where) {
       const whereClause = this.buildWhereClause(criteria.where);
       if (whereClause) {
-        query = query.where(whereClause);
+        query = query.where(and(userCondition, whereClause));
+      } else {
+        query = query.where(userCondition);
       }
+    } else {
+      query = query.where(userCondition);
     }
 
     if (criteria.orderBy && criteria.orderBy.column) {
@@ -106,8 +171,8 @@ export class DatabaseStorage implements IStorage {
           query = query.orderBy(orderFunction(contacts.createdAt));
           break;
         case 'company':
-            query = query.orderBy(orderFunction(contacts.company));
-            break;
+          query = query.orderBy(orderFunction(contacts.company));
+          break;
         default:
           query = query.orderBy(desc(contacts.createdAt));
       }
@@ -120,56 +185,68 @@ export class DatabaseStorage implements IStorage {
 
   private buildWhereClause(where: any): SQL | undefined {
     if (!where) return undefined;
-    
+
     const conditions: SQL[] = [];
 
     for (const key in where) {
-        const condition = where[key];
-        if (typeof condition !== 'object' || condition === null) continue;
+      const condition = where[key];
+      if (typeof condition !== 'object' || condition === null) continue;
 
-        const operator = Object.keys(condition)[0];
-        const operand = condition[operator];
+      const operator = Object.keys(condition)[0];
+      const operand = condition[operator];
 
-        let sqlCondition: SQL | undefined;
+      let sqlCondition: SQL | undefined;
 
-        switch (key) {
-            case "name":
-                if (operator === 'ilike') sqlCondition = ilike(contacts.name, `%${operand}%`);
-                break;
-            case "email":
-                if (operator === 'ilike') sqlCondition = ilike(contacts.email, `%${operand}%`);
-                else if (operator === 'eq') sqlCondition = eq(contacts.email, operand);
-                break;
-            case "company":
-                if (operator === 'ilike') sqlCondition = ilike(contacts.company, `%${operand}%`);
-                break;
-            case "title":
-                if (operator === 'ilike') sqlCondition = ilike(contacts.title, `%${operand}%`);
-                break;
-            case "industry":
-                if (operator === 'ilike') sqlCondition = ilike(contacts.industry, `%${operand}%`);
-                break;
-            case "createdAt":
-                if (operator === 'gte') sqlCondition = sql`${contacts.createdAt} >= ${operand}`;
-                else if (operator === 'lte') sqlCondition = sql`${contacts.createdAt} <= ${operand}`;
-                break;
-            case "and":
-                if (Array.isArray(operand)) {
-                    const nested = operand.map(c => this.buildWhereClause(c)).filter(c => c) as SQL[];
-                    if (nested.length > 0) sqlCondition = and(...nested);
-                }
-                break;
-            case "or":
-                 if (Array.isArray(operand)) {
-                    const nested = operand.map(c => this.buildWhereClause(c)).filter(c => c) as SQL[];
-                    if (nested.length > 0) sqlCondition = or(...nested);
-                }
-                break;
-        }
+      switch (key) {
+        case 'name':
+          if (operator === 'ilike')
+            sqlCondition = ilike(contacts.name, `%${operand}%`);
+          break;
+        case 'email':
+          if (operator === 'ilike')
+            sqlCondition = ilike(contacts.email, `%${operand}%`);
+          else if (operator === 'eq')
+            sqlCondition = eq(contacts.email, operand);
+          break;
+        case 'company':
+          if (operator === 'ilike')
+            sqlCondition = ilike(contacts.company, `%${operand}%`);
+          break;
+        case 'title':
+          if (operator === 'ilike')
+            sqlCondition = ilike(contacts.title, `%${operand}%`);
+          break;
+        case 'industry':
+          if (operator === 'ilike')
+            sqlCondition = ilike(contacts.industry, `%${operand}%`);
+          break;
+        case 'createdAt':
+          if (operator === 'gte')
+            sqlCondition = sql`${contacts.createdAt} >= ${operand}`;
+          else if (operator === 'lte')
+            sqlCondition = sql`${contacts.createdAt} <= ${operand}`;
+          break;
+        case 'and':
+          if (Array.isArray(operand)) {
+            const nested = operand
+              .map((c) => this.buildWhereClause(c))
+              .filter((c) => c) as SQL[];
+            if (nested.length > 0) sqlCondition = and(...nested);
+          }
+          break;
+        case 'or':
+          if (Array.isArray(operand)) {
+            const nested = operand
+              .map((c) => this.buildWhereClause(c))
+              .filter((c) => c) as SQL[];
+            if (nested.length > 0) sqlCondition = or(...nested);
+          }
+          break;
+      }
 
-        if (sqlCondition) {
-            conditions.push(sqlCondition);
-        }
+      if (sqlCondition) {
+        conditions.push(sqlCondition);
+      }
     }
 
     if (conditions.length === 0) return undefined;
@@ -177,23 +254,29 @@ export class DatabaseStorage implements IStorage {
     return and(...conditions);
   }
 
-  async getContactsByIndustry(industry: string): Promise<Contact[]> {
+  async getContactsByIndustry(
+    industry: string,
+    userId: string,
+  ): Promise<Contact[]> {
     return await db
       .select()
       .from(contacts)
-      .where(eq(contacts.industry, industry))
+      .where(and(eq(contacts.industry, industry), eq(contacts.userId, userId)))
       .orderBy(desc(contacts.createdAt));
   }
 
-  async getContactsCount(): Promise<number> {
+  async getContactsCount(userId: string): Promise<number> {
     const [result] = await db
       .select({ count: sql<number>`count(*)` })
-      .from(contacts);
+      .from(contacts)
+      .where(eq(contacts.userId, userId));
     return result.count;
   }
 
   // Business card methods
-  async createBusinessCard(businessCard: InsertBusinessCard): Promise<BusinessCard> {
+  async createBusinessCard(
+    businessCard: InsertBusinessCard,
+  ): Promise<BusinessCard> {
     const [newCard] = await db
       .insert(businessCards)
       .values({
@@ -204,12 +287,21 @@ export class DatabaseStorage implements IStorage {
     return newCard;
   }
 
-  async getBusinessCard(id: number): Promise<BusinessCard | undefined> {
-    const [card] = await db.select().from(businessCards).where(eq(businessCards.id, id));
+  async getBusinessCard(
+    id: number,
+    userId: string,
+  ): Promise<BusinessCard | undefined> {
+    const [card] = await db
+      .select()
+      .from(businessCards)
+      .where(and(eq(businessCards.id, id), eq(businessCards.userId, userId)));
     return card || undefined;
   }
 
-  async updateBusinessCard(id: number, updates: Partial<InsertBusinessCard>): Promise<BusinessCard | undefined> {
+  async updateBusinessCard(
+    id: number,
+    updates: Partial<InsertBusinessCard>,
+  ): Promise<BusinessCard | undefined> {
     const [updated] = await db
       .update(businessCards)
       .set({
@@ -221,32 +313,92 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
-  async getBusinessCardsByStatus(status: string): Promise<BusinessCard[]> {
+  async getBusinessCardsByStatus(
+    status: string,
+    userId: string,
+  ): Promise<BusinessCard[]> {
     return await db
       .select()
       .from(businessCards)
-      .where(eq(businessCards.processingStatus, status))
+      .where(and(eq(businessCards.processingStatus, status), eq(businessCards.userId, userId)))
       .orderBy(desc(businessCards.createdAt));
   }
 
-  async getRecentBusinessCards(limit: number, offset = 0): Promise<BusinessCard[]> {
+  async getRecentBusinessCards(
+    userId: string,
+    limit: number,
+    offset = 0,
+  ): Promise<BusinessCard[]> {
     return await db
       .select()
       .from(businessCards)
+      .where(eq(businessCards.userId, userId))
       .orderBy(desc(businessCards.createdAt))
       .limit(limit)
       .offset(offset);
   }
 
-  async getBusinessCardsCount(): Promise<number> {
+  async getBusinessCardsCount(userId: string): Promise<number> {
     const [result] = await db
       .select({ count: sql<number>`count(*)` })
-      .from(businessCards);
+      .from(businessCards)
+      .where(eq(businessCards.userId, userId));
     return result.count;
   }
 
+  // Event methods
+  async createEvent(event: InsertEvent): Promise<Event> {
+    const [newEvent] = await db
+      .insert(events)
+      .values({ ...event, updatedAt: new Date() })
+      .returning();
+    return newEvent;
+  }
+
+  async getEvent(id: number, userId: string): Promise<Event | undefined> {
+    const [event] = await db
+      .select()
+      .from(events)
+      .where(and(eq(events.id, id), eq(events.userId, userId)));
+    return event || undefined;
+  }
+
+  async getAllEvents(userId: string): Promise<Event[]> {
+    return await db
+      .select()
+      .from(events)
+      .where(eq(events.userId, userId))
+      .orderBy(desc(events.date));
+  }
+
+  async updateEvent(
+    id: number,
+    userId: string,
+    updates: Partial<InsertEvent>,
+  ): Promise<Event | undefined> {
+    const [updated] = await db
+      .update(events)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(events.id, id), eq(events.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteEvent(id: number, userId: string): Promise<boolean> {
+    // Disassociate contacts from this event
+    await db
+      .update(contacts)
+      .set({ eventId: null })
+      .where(and(eq(contacts.eventId, id), eq(contacts.userId, userId)));
+
+    const result = await db
+      .delete(events)
+      .where(and(eq(events.id, id), eq(events.userId, userId)));
+    return (result.rowCount || 0) > 0;
+  }
+
   // Statistics methods
-  async getStats(): Promise<{
+  async getStats(userId: string): Promise<{
     totalContacts: number;
     cardsProcessed: number;
     categories: number;
@@ -254,17 +406,23 @@ export class DatabaseStorage implements IStorage {
   }> {
     const [totalContactsResult] = await db
       .select({ count: sql<number>`count(*)` })
-      .from(contacts);
+      .from(contacts)
+      .where(eq(contacts.userId, userId));
 
     const [cardsProcessedResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(businessCards)
-      .where(eq(businessCards.processingStatus, "completed"));
+      .where(
+        and(
+          eq(businessCards.processingStatus, 'completed'),
+          eq(businessCards.userId, userId),
+        ),
+      );
 
     const [categoriesResult] = await db
       .select({ count: sql<number>`count(distinct industry)` })
       .from(contacts)
-      .where(sql`industry IS NOT NULL`);
+      .where(and(sql`industry IS NOT NULL`, eq(contacts.userId, userId)));
 
     return {
       totalContacts: totalContactsResult.count,

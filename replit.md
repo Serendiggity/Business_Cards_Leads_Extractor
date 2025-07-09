@@ -7,6 +7,7 @@ This is a full-stack AI-powered business development assistant designed to autom
 ## System Architecture
 
 ### Frontend Architecture
+
 - **Framework**: React 18 with TypeScript
 - **Build Tool**: Vite for fast development and optimized builds
 - **UI Library**: Radix UI components with Tailwind CSS styling
@@ -15,6 +16,7 @@ This is a full-stack AI-powered business development assistant designed to autom
 - **Styling**: Tailwind CSS with custom design system variables
 
 ### Backend Architecture
+
 - **Runtime**: Node.js with Express.js framework
 - **Language**: TypeScript with ES modules
 - **Database**: PostgreSQL with Drizzle ORM
@@ -22,6 +24,7 @@ This is a full-stack AI-powered business development assistant designed to autom
 - **API Design**: RESTful endpoints with JSON responses
 
 ### Data Storage Solutions
+
 - **Primary Database**: PostgreSQL via Supabase
 - **ORM**: Drizzle ORM with type-safe schema definitions
 - **File Storage**: Local file system for uploaded business card images
@@ -30,21 +33,25 @@ This is a full-stack AI-powered business development assistant designed to autom
 ## Key Components
 
 ### Database Schema
+
 - **Contacts Table**: Stores extracted contact information including name, email, phone, company, title, industry, etc.
 - **Business Cards Table**: Stores uploaded files, OCR text, processing status, and extracted data
 - **Relations**: One-to-many relationship between contacts and business cards
 
 ### OCR Service
+
 - **Google Cloud Vision API**: Extracts text from business card images
 - **Processing Pipeline**: Handles image buffers and returns structured text data
 - **Error Handling**: Graceful fallback for OCR failures
 
 ### AI Service
+
 - **OpenAI GPT-4**: Extracts structured contact data from OCR text
 - **Natural Language Processing**: Processes queries for contact search
 - **Industry Classification**: Categorizes contacts into predefined industries
 
 ### File Upload System
+
 - **Drag & Drop Interface**: User-friendly file upload with progress tracking
 - **File Validation**: Supports JPG, PNG, and PDF formats with size limits
 - **Processing Queue**: Asynchronous processing of uploaded business cards
@@ -71,17 +78,20 @@ This is a full-stack AI-powered business development assistant designed to autom
 ## External Dependencies
 
 ### Core Services
+
 - **Google Cloud Vision API**: OCR text extraction from images
 - **OpenAI GPT-4**: AI-powered data extraction and query processing
 - **Supabase**: PostgreSQL database hosting with real-time capabilities
 
 ### Development Tools
+
 - **Vite**: Frontend build tool with HMR
 - **Drizzle Kit**: Database migrations and schema management
 - **Tailwind CSS**: Utility-first CSS framework
 - **Replit Integration**: Development environment support
 
 ### UI Components
+
 - **Radix UI**: Accessible, unstyled component primitives
 - **Lucide React**: Modern icon library
 - **React Hook Form**: Form validation and management
@@ -90,17 +100,20 @@ This is a full-stack AI-powered business development assistant designed to autom
 ## Deployment Strategy
 
 ### Development Environment
+
 - **Local Development**: Vite dev server with Express backend
 - **Hot Module Replacement**: Fast development iteration
 - **Environment Variables**: Separate configs for dev/prod
 
 ### Production Build
+
 - **Frontend**: Vite builds optimized static assets
 - **Backend**: ESBuild bundles server code for Node.js
 - **Database**: Automated migrations with Drizzle Kit
 - **Static Assets**: Served via Express with proper caching
 
 ### Environment Requirements
+
 - Node.js runtime environment
 - PostgreSQL database (Supabase)
 - Google Cloud Vision API credentials

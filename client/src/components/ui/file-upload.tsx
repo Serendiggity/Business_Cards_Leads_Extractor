@@ -1,10 +1,10 @@
-import { useState, useCallback } from "react";
-import { useDropzone } from "react-dropzone";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { CloudUpload, Plus, X } from "lucide-react";
+import { useState, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import { CloudUpload, Plus, X } from 'lucide-react';
 
 interface FileUploadProps {
   onUploadStarted?: (cardId: number) => void;
@@ -16,38 +16,47 @@ export function FileUpload({ onUploadStarted }: FileUploadProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const { toast } = useToast();
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    // Validate each file
-    const validFiles = acceptedFiles.filter(file => {
-      // Check file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp'];
-      if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: "Unsupported file type",
-          description: `${file.name} is not supported. Please upload JPG, PNG, GIF, or BMP files.`,
-          variant: "destructive"
-        });
-        return false;
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      // Validate each file
+      const validFiles = acceptedFiles.filter((file) => {
+        // Check file type
+        const allowedTypes = [
+          'image/jpeg',
+          'image/jpg',
+          'image/png',
+          'image/gif',
+          'image/bmp',
+        ];
+        if (!allowedTypes.includes(file.type)) {
+          toast({
+            title: 'Unsupported file type',
+            description: `${file.name} is not supported. Please upload JPG, PNG, GIF, or BMP files.`,
+            variant: 'destructive',
+          });
+          return false;
+        }
+
+        // Check file size (10MB limit)
+        const maxSize = 10 * 1024 * 1024;
+        if (file.size > maxSize) {
+          toast({
+            title: 'File too large',
+            description: `${file.name} is too large. Please upload files smaller than 10MB.`,
+            variant: 'destructive',
+          });
+          return false;
+        }
+
+        return true;
+      });
+
+      if (validFiles.length > 0) {
+        setSelectedFiles((prev) => [...prev, ...validFiles]);
       }
-      
-      // Check file size (10MB limit)
-      const maxSize = 10 * 1024 * 1024;
-      if (file.size > maxSize) {
-        toast({
-          title: "File too large",
-          description: `${file.name} is too large. Please upload files smaller than 10MB.`,
-          variant: "destructive"
-        });
-        return false;
-      }
-      
-      return true;
-    });
-    
-    if (validFiles.length > 0) {
-      setSelectedFiles(prev => [...prev, ...validFiles]);
-    }
-  }, [toast]);
+    },
+    [toast],
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -55,14 +64,14 @@ export function FileUpload({ onUploadStarted }: FileUploadProps) {
       'image/jpeg': ['.jpeg', '.jpg'],
       'image/png': ['.png'],
       'image/gif': ['.gif'],
-      'image/bmp': ['.bmp']
+      'image/bmp': ['.bmp'],
     },
     maxSize: 10 * 1024 * 1024, // 10MB
-    multiple: true
+    multiple: true,
   });
 
   const removeFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const uploadFiles = async () => {
@@ -81,14 +90,14 @@ export function FileUpload({ onUploadStarted }: FileUploadProps) {
           method: 'POST',
           body: formData,
         });
-        
+
         if (response.ok) {
           const result = await response.json();
           onUploadStarted?.(result.id);
           setUploadProgress(((i + 1) / selectedFiles.length) * 100);
-          
+
           toast({
-            title: "Upload Successful",
+            title: 'Upload Successful',
             description: `${file.name} has been uploaded and processing started.`,
           });
         } else {
@@ -101,9 +110,10 @@ export function FileUpload({ onUploadStarted }: FileUploadProps) {
     } catch (error) {
       console.error('Upload error:', error);
       toast({
-        title: "Upload Failed",
-        description: "There was an error uploading your files. Please try again.",
-        variant: "destructive",
+        title: 'Upload Failed',
+        description:
+          'There was an error uploading your files. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsUploading(false);
@@ -141,11 +151,16 @@ export function FileUpload({ onUploadStarted }: FileUploadProps) {
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-gray-900">Selected Files</h4>
           {selectedFiles.map((file, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+            <div
+              key={index}
+              className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
+            >
               <div className="flex items-center">
                 <div className="text-sm">
                   <p className="font-medium text-gray-900">{file.name}</p>
-                  <p className="text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                  <p className="text-gray-500">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
                 </div>
               </div>
               <Button
@@ -174,12 +189,10 @@ export function FileUpload({ onUploadStarted }: FileUploadProps) {
 
       {/* Upload Button */}
       {selectedFiles.length > 0 && (
-        <Button
-          onClick={uploadFiles}
-          disabled={isUploading}
-          className="w-full"
-        >
-          {isUploading ? 'Uploading...' : `Upload ${selectedFiles.length} file(s)`}
+        <Button onClick={uploadFiles} disabled={isUploading} className="w-full">
+          {isUploading
+            ? 'Uploading...'
+            : `Upload ${selectedFiles.length} file(s)`}
         </Button>
       )}
 
