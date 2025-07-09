@@ -11,6 +11,12 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import Dashboard from '@/pages/dashboard';
 import NotFound from '@/pages/not-found';
+import { Router, Route } from 'wouter';
+import EventsPage from '@/pages/events';
+import EventDetailPage from '@/pages/event-detail';
+import ScanPage from '@/pages/scan';
+import ContactsPage from '@/pages/contacts';
+import EmailsPage from '@/pages/emails';
 
 function App() {
   return (
@@ -30,7 +36,16 @@ function App() {
         </header>
         <main>
           <SignedIn>
-            <Dashboard />
+            <Router>
+              <Route path="/" component={Dashboard} />
+              <Route path="/dashboard" component={Dashboard} />
+              <Route path="/events" component={EventsPage} />
+              <Route path="/events/:id" component={EventDetailPage} />
+              <Route path="/scan" component={ScanPage} />
+              <Route path="/contacts" component={ContactsPage} />
+              <Route path="/emails" component={EmailsPage} />
+              <Route component={NotFound} />
+            </Router>
           </SignedIn>
           <SignedOut>
             <div className="flex items-center justify-center h-full">
